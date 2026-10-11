@@ -1,0 +1,22 @@
+{
+    "name": "PowerCutCrew.UI",
+    "rootNamespace": "PowerCutCrew.UI",
+    "references": [
+        "PowerCutCrew.Core",
+        "PowerCutCrew.Localization",
+        "Unity.Localization",
+        "Unity.TextMeshPro",
+        "RTLTMPro",
+        "Unity.InputSystem",
+        "Unity.ResourceManager"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

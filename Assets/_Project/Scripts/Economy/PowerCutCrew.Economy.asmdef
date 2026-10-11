@@ -1,0 +1,16 @@
+{
+    "name": "PowerCutCrew.Economy",
+    "rootNamespace": "PowerCutCrew.Economy",
+    "references": [
+        "PowerCutCrew.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

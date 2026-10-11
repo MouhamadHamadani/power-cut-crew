@@ -1,0 +1,34 @@
+{
+    "name": "PowerCutCrew.Editor",
+    "rootNamespace": "PowerCutCrew.Editor",
+    "references": [
+        "PowerCutCrew.Core",
+        "PowerCutCrew.Localization",
+        "PowerCutCrew.UI",
+        "Unity.Localization",
+        "Unity.Localization.Editor",
+        "Unity.TextMeshPro",
+        "Unity.TextMeshPro.Editor",
+        "RTLTMPro",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Universal.Editor",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.InputSystem",
+        "Unity.ugui",
+        "Unity.ugui.Editor",
+        "Unity.ResourceManager",
+        "Unity.Addressables",
+        "Unity.Addressables.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

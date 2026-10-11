@@ -1,0 +1,16 @@
+{
+    "name": "PowerCutCrew.Shift",
+    "rootNamespace": "PowerCutCrew.Shift",
+    "references": [
+        "PowerCutCrew.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

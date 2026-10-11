@@ -1,0 +1,28 @@
+{
+    "name": "PowerCutCrew.Tests.EditMode",
+    "rootNamespace": "PowerCutCrew.Tests.EditMode",
+    "references": [
+        "PowerCutCrew.Core",
+        "PowerCutCrew.Localization",
+        "PowerCutCrew.UI",
+        "Unity.Localization",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Unity.ResourceManager"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

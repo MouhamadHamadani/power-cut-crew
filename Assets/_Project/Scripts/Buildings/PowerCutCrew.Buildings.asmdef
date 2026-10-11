@@ -1,0 +1,16 @@
+{
+    "name": "PowerCutCrew.Buildings",
+    "rootNamespace": "PowerCutCrew.Buildings",
+    "references": [
+        "PowerCutCrew.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
