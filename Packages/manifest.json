@@ -1,6 +1,8 @@
 {
   "dependencies": {
+    "com.community.netcode.transport.steamnetworkingsockets": "https://github.com/Unity-Technologies/multiplayer-community-contributions.git?path=/Transports/com.community.netcode.transport.steamnetworkingsockets#0fab638470379ace12b0149dfb41c043d23dbce5",
     "com.nosuchstudio.rtltmpro": "https://github.com/hk1ll3r/RTLTMPro.git?path=/UPMPackage",
+    "com.rlabrecque.steamworks.net": "https://github.com/rlabrecque/Steamworks.NET.git?path=/com.rlabrecque.steamworks.net#ba71581f1ed7349e8d0f17ddc6f135dd3bc8a6a3",
     "com.unity.cinemachine": "3.1.5",
     "com.unity.ide.visualstudio": "2.0.23",
     "com.unity.inputsystem": "1.14.2",
@@ -38,9 +40,16 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0",
+    "com.unity.multiplayer.playmode": "2.0.2",
+    "com.unity.multiplayer.tools": "2.2.12",
+    "com.unity.netcode.gameobjects": "2.13.3",
     "com.unity.pipeline": "0.7.0-exp.1",
     "com.unity.render-pipelines.universal": "17.3.0",
     "com.unity.test-framework": "1.6.0",
+    "com.unity.transport": "2.7.4",
     "com.unity.ugui": "2.0.0"
-  }
+  },
+  "testables": [
+    "com.unity.netcode.gameobjects"
+  ]
 }

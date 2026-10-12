@@ -8,7 +8,10 @@
         "Unity.Localization",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Unity.ResourceManager"
+        "Unity.ResourceManager",
+        "PowerCutCrew.Net",
+        "Unity.Netcode.Runtime",
+        "Unity.Collections"
     ],
     "includePlatforms": [
         "Editor"

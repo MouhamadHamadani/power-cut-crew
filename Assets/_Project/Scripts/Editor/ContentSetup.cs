@@ -36,6 +36,17 @@ namespace PowerCutCrew.Editor
 
         private static TMP_FontAsset _bowlby, _lalezar, _notoSans, _notoArabic;
 
+        internal static void LoadFonts()
+        {
+            _bowlby = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>($"{FontDir}/BowlbyOne SDF.asset");
+            _lalezar = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>($"{FontDir}/Lalezar SDF.asset");
+            _notoSans = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>($"{FontDir}/NotoSans SDF.asset");
+            _notoArabic = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>($"{FontDir}/NotoSansArabic SDF.asset");
+        }
+
+        internal static TMP_FontAsset BodyFontEn => _notoSans;
+        internal static TMP_FontAsset BodyFontAr => _notoArabic;
+
         [MenuItem("Power Cut Crew/Setup/Import TMP Essentials")]
         public static void ImportTmp()
         {
@@ -244,21 +255,21 @@ namespace PowerCutCrew.Editor
             EditorSceneManager.SaveScene(s, $"{SceneDir}/Bootstrap.unity");
         }
 
-        private static RectTransform UiObject(string name, Transform parent)
+        internal static RectTransform UiObject(string name, Transform parent)
         {
             var go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);
             return (RectTransform)go.transform;
         }
 
-        private static void Stretch(RectTransform rt)
+        internal static void Stretch(RectTransform rt)
         {
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.offsetMin = rt.offsetMax = Vector2.zero;
         }
 
-        private static RTLTextMeshPro MakeText(string name, Transform parent, string key, TMP_FontAsset en, TMP_FontAsset ar,
+        internal static RTLTextMeshPro MakeText(string name, Transform parent, string key, TMP_FontAsset en, TMP_FontAsset ar,
             float size, Color color)
         {
             RectTransform rt = UiObject(name, parent);
@@ -276,7 +287,7 @@ namespace PowerCutCrew.Editor
             return label;
         }
 
-        private static Button MakeButton(string name, Transform parent, string key, Vector2 size)
+        internal static Button MakeButton(string name, Transform parent, string key, Vector2 size)
         {
             RectTransform rt = UiObject(name, parent);
             rt.sizeDelta = size;

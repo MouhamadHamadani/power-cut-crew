@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 334c2d14aff6a7248b3c5cb8fd5999c7, type: 3}
+  m_Name: NetTuning
+  m_EditorClassIdentifier: PowerCutCrew.Net::PowerCutCrew.Net.NetTuning
+  MaxPlayers: 4
+  Port: 7777
+  DisconnectTimeoutSeconds: 5
+  ConnectTimeoutSeconds: 12
+  TickRate: 30
+  GameScene: Street_Greybox
+  MenuScene: MainMenu
+  InterpolationBufferSeconds: 0.1
+  SnapshotRateHz: 20
+  SnapshotExtentMeters: 32
+  SnapshotHeartbeatSeconds: 1
+  SnapshotMotionThresholdMeters: 0.0005
+  HeldBlendSeconds: 0.15
+  NetSimCalibration: 0.55
+  NetSimProfiles:
+  - Name: bad
+    DelayMs: 100
+    JitterMs: 30
+    LossPercent: 2
+  - Name: awful
+    DelayMs: 200
+    JitterMs: 50
+    LossPercent: 5
