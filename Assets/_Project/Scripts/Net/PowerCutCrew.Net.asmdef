@@ -2,7 +2,20 @@
     "name": "PowerCutCrew.Net",
     "rootNamespace": "PowerCutCrew.Net",
     "references": [
-        "PowerCutCrew.Core"
+        "PowerCutCrew.Core",
+        "PowerCutCrew.Localization",
+        "Unity.Netcode.Runtime",
+        "Unity.Netcode.Components",
+        "Unity.Networking.Transport",
+        "Unity.Collections",
+        "Unity.Multiplayer.Tools.NetworkSimulator.Runtime",
+        "SteamNetworkingSockets Transport for Netcode for GameObjects",
+        "com.rlabrecque.steamworks.net",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "RTLTMPro",
+        "Unity.Localization",
+        "Unity.ResourceManager"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

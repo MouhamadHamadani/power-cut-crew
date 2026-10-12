@@ -18,7 +18,14 @@
         "Unity.ugui.Editor",
         "Unity.ResourceManager",
         "Unity.Addressables",
-        "Unity.Addressables.Editor"
+        "Unity.Addressables.Editor",
+        "PowerCutCrew.Net",
+        "Unity.Netcode.Runtime",
+        "Unity.Netcode.Components",
+        "Unity.Networking.Transport",
+        "Unity.Cinemachine",
+        "SteamNetworkingSockets Transport for Netcode for GameObjects",
+        "Unity.Collections"
     ],
     "includePlatforms": [
         "Editor"

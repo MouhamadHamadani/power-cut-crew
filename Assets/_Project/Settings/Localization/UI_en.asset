@@ -16,7 +16,8 @@ MonoBehaviour:
     m_Code: en
   m_SharedData: {fileID: 11400000, guid: a296f3c198ab32f4c9dba441f38a31be, type: 2}
   m_Metadata:
-    m_Items: []
+    m_Items:
+    - rid: 3748810466669887489
   m_TableData:
   - m_Id: 770322432
     m_Localized: Power Cut Crew
@@ -38,6 +39,69 @@ MonoBehaviour:
     m_Localized: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629"
     m_Metadata:
       m_Items: []
+  - m_Id: 292872572776448
+    m_Localized: Host (Local)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216960
+    m_Localized: Host (Steam)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216961
+    m_Localized: Join
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216962
+    m_Localized: Back
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216963
+    m_Localized: IP address
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216964
+    m_Localized: Connecting...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216965
+    m_Localized: Player {0}
+    m_Metadata:
+      m_Items:
+      - rid: 3748810466669887489
+  - m_Id: 292872694411264
+    m_Localized: Steam is not running. Start Steam, or use Host (Local).
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411265
+    m_Localized: Could not create the Steam lobby.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411266
+    m_Localized: The host left the game.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411267
+    m_Localized: The game is full.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411268
+    m_Localized: Your game version is different from the host's.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411269
+    m_Localized: Could not connect to the host.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411270
+    m_Localized: Pick up
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 3748810466669887489
+      type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries: 
+        m_SharedEntries:
+        - id: 292872690216965

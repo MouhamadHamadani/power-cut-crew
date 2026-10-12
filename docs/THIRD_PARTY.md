@@ -37,3 +37,18 @@ All SIL Open Font License 1.1. Source: https://github.com/google/fonts (license 
 | Lalezar | AR display | `ofl/lalezar` |
 | Noto Sans (variable) | EN body | `ofl/notosans` |
 | Noto Sans Arabic (variable) | AR body | `ofl/notosansarabic` |
+
+## Networking (Prompt 03)
+
+| Name | Version | License | Source |
+|---|---|---|---|
+| com.unity.netcode.gameobjects (NGO) | 2.13.3 | Unity Companion License | Unity registry |
+| com.unity.transport (Unity Transport) | 2.7.4 | Unity Companion License | Unity registry |
+| com.unity.multiplayer.tools (Network Simulator, profiler) | 2.2.12 | Unity Companion License | Unity registry |
+| com.unity.multiplayer.playmode (Multiplayer Play Mode) | 2.0.2 | Unity Companion License | Unity registry (installs and compiles on 6.3; editor-only, not exercised in batchmode) |
+| Steamworks.NET (`com.rlabrecque.steamworks.net`) | 2025.165.0, commit `ba71581f1ed7349e8d0f17ddc6f135dd3bc8a6a3` | MIT | https://github.com/rlabrecque/Steamworks.NET |
+| SteamNetworkingSockets transport for NGO (`com.community.netcode.transport.steamnetworkingsockets`) | 1.0.1, commit `0fab638470379ace12b0149dfb41c043d23dbce5` | MIT | https://github.com/Unity-Technologies/multiplayer-community-contributions (Transports/com.community.netcode.transport.steamnetworkingsockets) |
+
+`Packages/manifest.json` also lists `testables: com.unity.netcode.gameobjects` so NGO's integration test helpers can be used by our PlayMode test.
+The Steamworks.NET package bundles Valve's `steam_api64.dll`; Steam test App ID 480 (Spacewar) is used for development only (`steam_appid.txt`, development builds only).
+Shipping on Steam needs a real App ID (one-time Steam Direct fee per game), which is outside the zero-cost rule and is not part of this prompt.

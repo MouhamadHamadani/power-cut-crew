@@ -35,6 +35,62 @@ MonoBehaviour:
     m_Key: menu.language
     m_Metadata:
       m_Items: []
+  - m_Id: 292872572776448
+    m_Key: net.host_local
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216960
+    m_Key: net.host_steam
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216961
+    m_Key: net.join
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216962
+    m_Key: net.back
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216963
+    m_Key: net.ip_placeholder
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216964
+    m_Key: net.connecting
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872690216965
+    m_Key: net.player_name
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411264
+    m_Key: net.error.steam_unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411265
+    m_Key: net.error.steam_lobby
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411266
+    m_Key: net.error.host_left
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411267
+    m_Key: net.error.full
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411268
+    m_Key: net.error.version
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411269
+    m_Key: net.error.connect_failed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 292872694411270
+    m_Key: interact.pickup
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

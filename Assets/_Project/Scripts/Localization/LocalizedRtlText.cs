@@ -18,6 +18,20 @@ namespace PowerCutCrew.Localization
         private TextAlignmentOptions _baseAlignment;
 
         public LocalizedString Text { get => _text; set => _text = value; }
+
+        /// <summary>Optional wrapper for the localized text, for example value => "[E] " + value.</summary>
+        public System.Func<string, string> Format { get; set; }
+
+        /// <summary>Show the UI-table string with this key (empty key clears the label). Safe to call at runtime.</summary>
+        public void SetKey(string key)
+        {
+            bool live = isActiveAndEnabled;
+            if (live) { _text.StringChanged -= OnStringChanged; }
+            _text = string.IsNullOrEmpty(key) ? new LocalizedString() : new LocalizedString("UI", key);
+            if (_label == null) { _label = GetComponent<RTLTextMeshPro>(); _baseAlignment = _label.alignment; }
+            if (string.IsNullOrEmpty(key)) { _label.text = string.Empty; return; }
+            if (live) { _text.StringChanged += OnStringChanged; }
+        }
         public TMP_FontAsset EnglishFont { get => _englishFont; set => _englishFont = value; }
         public TMP_FontAsset ArabicFont { get => _arabicFont; set => _arabicFont = value; }
 
@@ -43,7 +57,7 @@ namespace PowerCutCrew.Localization
                 && LocalizationSettings.SelectedLocale.Identifier.Code == "ar";
             _label.font = arabic ? _arabicFont : _englishFont;
             _label.alignment = arabic ? Mirror(_baseAlignment) : _baseAlignment;
-            _label.text = value;
+            _label.text = Format != null ? Format(value) : value;
         }
 
         private static TextAlignmentOptions Mirror(TextAlignmentOptions a)

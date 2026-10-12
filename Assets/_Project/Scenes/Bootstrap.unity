@@ -286,6 +286,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PowerCutCrew.UI::PowerCutCrew.UI.Bootstrap
   _nextScene: MainMenu
+  _sessionPrefab: {fileID: 2850319383978491100, guid: 21444d9989e0c3646967b78085a05567, type: 3}
 --- !u!4 &1349863692
 Transform:
   m_ObjectHideFlags: 0

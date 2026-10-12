@@ -8,7 +8,8 @@
         "Unity.TextMeshPro",
         "RTLTMPro",
         "Unity.InputSystem",
-        "Unity.ResourceManager"
+        "Unity.ResourceManager",
+        "PowerCutCrew.Net"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
