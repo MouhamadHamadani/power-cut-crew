@@ -248,6 +248,18 @@ namespace PowerCutCrew.Net
             Debug.Log($"[Verify] {(ok ? "OK" : "FAIL")} {message}");
         }
 
+        /// <summary>Bot-run assertion, part two: snapshot streams and the game-specific report (see NetVerifyExtras).</summary>
+        public void SendVerifyExtras(string report, ulong[] keys, ushort[] seqs, int[] counts, Vector3[] positions)
+        {
+            if (!IsServer) { VerifyExtrasRpc(report, keys, seqs, counts, positions); }
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+        private void VerifyExtrasRpc(string report, ulong[] keys, ushort[] seqs, int[] counts, Vector3[] positions)
+        {
+            NetVerifyExtras.Check(OwnerClientId, report, keys, seqs, counts, positions);
+        }
+
         /// <summary>The context for a request: the claimed hand pose is only attached when the host trusts it.</summary>
         private InteractionContext MakeContext(Vector3 handPosition, Quaternion handRotation)
         {

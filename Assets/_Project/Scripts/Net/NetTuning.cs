@@ -48,6 +48,10 @@ namespace PowerCutCrew.Net
         public float GhostHandoverDistance = 0.05f;
         public float GhostMinSeconds = 0.25f;
         public float GhostMaxSeconds = 1.5f;
+        [Tooltip("Cans tumble less (and so land alike on the host and in the holder's copy): extra damping and a bounce-free grippy material.")]
+        public float CanLinearDamping = 0.3f;
+        public float CanAngularDamping = 2f;
+        public float CanFriction = 0.9f;
 
         [Header("Hold interactions (pour, fill)")]
         public float HoldKeepAliveInterval = 0.2f;

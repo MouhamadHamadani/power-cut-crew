@@ -48,6 +48,7 @@ namespace PowerCutCrew.Cables
         public bool CanGrab => State != CableState.Plugged && State != CableState.Snapped;
 
         public int Outlet => _outlet.Value;
+        public int SocketId => IsServer && _model != null ? _model.SocketId : _socket.Value;
         public CableState State => IsServer && _model != null ? _model.State : (CableState)_state.Value;
         public NetworkPhysicsItem Item => _item;
         public float Stretch => _stretch;
@@ -111,6 +112,16 @@ namespace PowerCutCrew.Cables
         public override void OnNetworkSpawn()
         {
             All.Add(this);
+            // a plugged plug must not block the look-ray: the socket behind it is what you interact with to unplug
+            _state.OnValueChanged += (previous, now) => _item.SetRaycastable((CableState)now != CableState.Plugged);
+            if ((CableState)_state.Value == CableState.Plugged) { _item.SetRaycastable(false); }
+            // metric: how far the plug in the holder's hand (local copy) is from the socket when the host confirms the plug-in
+            _socket.OnValueChanged += (previous, now) =>
+            {
+                if (IsServer || now < 0 || !_item.TryGetCopyPosition(out Vector3 copy)) { return; }
+                PowerSocket s = PowerSocket.ById(now);
+                if (s != null) { NetMetrics.Sample("plugGapCm", Vector3.Distance(copy, s.PlugPoint.position) * 100.0); }
+            };
             if (!IsServer)
             {
                 foreach (Transform b in _bodies)
@@ -241,6 +252,17 @@ namespace PowerCutCrew.Cables
             return Mathf.Max(0f, path / CableTuning.Instance.RestLength - 1f);
         }
 
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        private float _testYankUntil;
+
+        /// <summary>Test hook for the bot runs (development builds only): nothing in the street pulls a plugged cable taut, so
+        /// this feeds the real tension state machine a 25 % stretch for 0.8 s and the normal pop-out path does the rest.</summary>
+        public void TestYank()
+        {
+            if (IsServer && State == CableState.Plugged) { _testYankUntil = Time.time + 0.8f; }
+        }
+#endif
+
         private void FixedUpdate()
         {
             if (!IsSpawned || !IsServer || _model == null) { return; }
@@ -251,6 +273,9 @@ namespace PowerCutCrew.Cables
             if (_model.State == CableState.Plugged && _socketRef != null) { Pin(_socketRef); }
 
             _stretch = ComputeStretch();
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+            if (Time.time < _testYankUntil) { _stretch = Mathf.Max(_stretch, 0.25f); }
+#endif
             if (_debug && held && Time.time > _nextLog)
             {
                 _nextLog = Time.time + 1f;

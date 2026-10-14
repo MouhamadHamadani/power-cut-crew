@@ -12,10 +12,28 @@ namespace PowerCutCrew.Net
             if (LaunchArgs.Verify && !(NetSession.Instance != null && NetSession.Instance.IsHost)) { StartCoroutine(Run()); }
         }
 
+        private static void SendExtras()
+        {
+            var keys = new List<ulong>();
+            var seqs = new List<ushort>();
+            var counts = new List<int>();
+            var flat = new List<Vector3>();
+            foreach (SnapshotStream stream in SnapshotStream.Streams)
+            {
+                if (!stream.HasData || stream.ReceivedPositions == null) { continue; }
+                keys.Add(stream.StreamKey);
+                seqs.Add(stream.ReceivedSeq);
+                counts.Add(stream.ReceivedPositions.Length);
+                flat.AddRange(stream.ReceivedPositions);
+            }
+            string report = NetVerifyExtras.BuildReport != null ? NetVerifyExtras.BuildReport() : "";
+            NetPlayer.Local.SendVerifyExtras(report, keys.ToArray(), seqs.ToArray(), counts.ToArray(), flat.ToArray());
+        }
+
         private IEnumerator Run()
         {
             while (NetPlayer.Local == null) { yield return null; }
-            for (int round = 0; round < 3; round++)
+            for (int round = 0; round < 8; round++)
             {
                 yield return new WaitForSeconds(round == 0 ? 8f : 10f);
                 if (NetPlayer.Local == null) { yield break; }
@@ -33,6 +51,7 @@ namespace PowerCutCrew.Net
                 ushort seq = chain != null ? chain.ReceivedSeq : (ushort)0;
                 Vector3[] pos = chain != null && chain.ReceivedPositions != null ? (Vector3[])chain.ReceivedPositions.Clone() : new Vector3[0];
                 NetPlayer.Local.SendVerify(indices.ToArray(), versions.ToArray(), holders.ToArray(), seq, pos);
+                SendExtras();
             }
         }
     }

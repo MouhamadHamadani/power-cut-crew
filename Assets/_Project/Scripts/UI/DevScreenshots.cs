@@ -17,6 +17,7 @@ namespace PowerCutCrew.UI
         {
             string dir = LaunchArgs.Get("-shotdir");
             string kind = LaunchArgs.Get("-shot", "playpanel");
+            if (kind == "coreloop") { yield break; }   // CoreLoopShots (Cables) does that one
             Directory.CreateDirectory(dir);
             yield return LocalizationSettings.InitializationOperation;
             if (kind == "playpanel")

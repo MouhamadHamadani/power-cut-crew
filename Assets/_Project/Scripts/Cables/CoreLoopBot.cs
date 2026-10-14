@@ -16,6 +16,8 @@ namespace PowerCutCrew.Cables
         private enum Goal { None, PullCord, GetCan, FillCan, PourCan, GetPlug, CarryPlug, DragAway, Unplug }
 
         private readonly System.Random _rng;
+        private readonly bool _preferFull;
+        private readonly bool _holdPlug = LaunchArgs.Has("-holdplug");
         private Goal _goal = Goal.None;
         private float _goalTime;
         private float _cooldown;
@@ -33,6 +35,7 @@ namespace PowerCutCrew.Cables
         public CoreLoopBot(int seed)
         {
             _rng = new System.Random(seed * 31 + 7);
+            _preferFull = seed % 2 == 1;   // the others like empty cans: they end up at the drum
         }
 
         private float R() => (float)_rng.NextDouble();
@@ -52,12 +55,25 @@ namespace PowerCutCrew.Cables
             _goalTime += dt;
             _cooldown -= dt;
 
+            if (_holdPlug)
+            {
+                // test mode (-holdplug): fetch a plug and keep it in hand until somebody kills this process
+                NetworkPhysicsItem inHand = BotBrain.HeldByMe();
+                if (inHand != null && inHand.Kind == "plug") { return true; }
+                if (_goal == Goal.None)
+                {
+                    _idle -= dt;
+                    if (_idle > 0f) { return false; }
+                    if (HasPlugToTake()) { Set(Goal.GetPlug); } else { _idle = 1f; return false; }
+                }
+            }
+
             if (_goal == Goal.None)
             {
                 _idle -= dt;
                 if (_idle > 0f) { return false; }
                 Choose(gen);
-                if (_goal == Goal.None) { _idle = 1f + R() * 2f; return false; }
+                if (_goal == Goal.None) { _idle = 0.5f + R(); return false; }
             }
 
             bool done = false;
@@ -76,7 +92,7 @@ namespace PowerCutCrew.Cables
             {
                 if (_goalTime > 40f && BotBrain.HeldByMe() != null) { f.Drop = true; }
                 _goal = Goal.None;
-                _idle = 0.5f + R() * 1.5f;
+                _idle = 0.3f + R();
             }
             return true;
         }
@@ -93,11 +109,21 @@ namespace PowerCutCrew.Cables
                 if (can != null) { Set(can.Amount > 3f ? Goal.PourCan : Goal.FillCan); return; }
                 return;
             }
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+            // only the host's bot (it can reach the host-side cable): now and then yank a plugged cable to exercise the pop-out
+            if (gen.IsServer && R() < 0.02f)
+            {
+                foreach (CableNet c in CableNet.All)
+                {
+                    if (c.State == CableState.Plugged) { c.TestYank(); break; }
+                }
+            }
+#endif
             bool running = gen.State == GeneratorState.Running;
+            if (R() < 0.25f && AnyOccupiedSocket(30f) != null) { Set(Goal.Unplug); return; }
             if (!running && gen.State != GeneratorState.Overheated && gen.Fuel > 0.5f && R() < 0.8f) { Set(Goal.PullCord); return; }
             if (gen.Fuel < gen.Capacity * 0.6f && R() < 0.7f) { Set(Goal.GetCan); return; }
             if (R() < 0.6f && HasPlugToTake()) { Set(Goal.GetPlug); return; }
-            if (R() < 0.15f && AnyOccupiedSocket() != null) { Set(Goal.Unplug); }
         }
 
         private static bool HasPlugToTake()
@@ -109,11 +135,16 @@ namespace PowerCutCrew.Cables
             return false;
         }
 
-        private static PowerSocket AnyOccupiedSocket()
+        private static readonly System.Collections.Generic.Dictionary<int, float> _occupiedSince = new System.Collections.Generic.Dictionary<int, float>();
+
+        /// <summary>A socket that has had a plug in it for at least this long (so two loads get to heat the generator before a bot unplugs).</summary>
+        private static PowerSocket AnyOccupiedSocket(float minSeconds = 0f)
         {
             foreach (PowerSocket s in PowerSocket.All)
             {
-                if (s.Occupied) { return s; }
+                if (!s.Occupied) { _occupiedSince.Remove(s.Id); continue; }
+                if (!_occupiedSince.TryGetValue(s.Id, out float since)) { _occupiedSince[s.Id] = since = Time.time; }
+                if (Time.time - since >= minSeconds) { return s; }
             }
             return null;
         }
@@ -131,7 +162,7 @@ namespace PowerCutCrew.Cables
                 if (score > bestScore) { bestScore = score; best = s; }
             }
             _targetSocket = best;
-            if (R() < 0.12f)
+            if (R() < (LaunchArgs.Has("-snapbias") ? 0.6f : 0.07f))
             {
                 Set(Goal.DragAway);
                 float a = R() * Mathf.PI * 2f;
@@ -184,7 +215,7 @@ namespace PowerCutCrew.Cables
             {
                 var can = i.GetComponent<FuelCan>();
                 if (can == null || i.IsHeld || i.Locked) { continue; }
-                float d = Vector3.Distance(i.transform.position, pos) - (can.Amount > 5f ? 12f : 0f) + R();
+                float d = Vector3.Distance(i.transform.position, pos) - (can.Amount > 5f ? (_preferFull ? 12f : -12f) : 0f) + R();
                 if (d < bestD) { bestD = d; best = i; }
             }
             if (best == null) { return true; }

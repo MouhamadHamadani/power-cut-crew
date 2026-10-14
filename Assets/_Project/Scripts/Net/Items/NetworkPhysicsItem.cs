@@ -106,6 +106,27 @@ namespace PowerCutCrew.Net
         {
             _rb = GetComponent<Rigidbody>();
             _originalLayer = gameObject.layer;
+            if (_kind == "can") { SettleLikeACan(); }
+        }
+
+        private bool _ghostRegrabbed;
+        private static PhysicsMaterial _canMaterial;
+
+        private void SettleLikeACan()
+        {
+            NetTuning t = NetTuning.Instance;
+            _rb.linearDamping = t.CanLinearDamping;
+            _rb.angularDamping = t.CanAngularDamping;
+            if (_canMaterial == null)
+            {
+                _canMaterial = new PhysicsMaterial("CanNoBounce")
+                {
+                    bounciness = 0f, dynamicFriction = t.CanFriction, staticFriction = t.CanFriction,
+                    bounceCombine = PhysicsMaterialCombine.Minimum, frictionCombine = PhysicsMaterialCombine.Maximum,
+                };
+            }
+            var box = GetComponent<BoxCollider>();
+            if (box != null) { box.sharedMaterial = _canMaterial; }
         }
 
         /// <summary>Server: call right after Spawn().</summary>
@@ -185,14 +206,16 @@ namespace PowerCutCrew.Net
             _rb.isKinematic = false;
             if (teleported)
             {
-                transform.SetPositionAndRotation(request.Position, request.Rotation);
+                Quaternion level = ReleaseRotation(request.Rotation);
+                transform.SetPositionAndRotation(request.Position, level);
                 _rb.position = request.Position;
-                _rb.rotation = request.Rotation;
+                _rb.rotation = level;
             }
             float maxSpeed = PlayerTuning.Instance.ThrowSpeed * NetTuning.Instance.ThrowSpeedMargin;
             Vector3 v = ReleasePoseRule.ClampVelocity(request.Velocity, maxSpeed);
             _rb.linearVelocity = v;
             _rb.angularVelocity = ReleaseSpin(v);
+            if (LaunchArgs.Has("-botlog")) { Debug.Log($"[Net] host release {_kind}: pos {_rb.position} rot {_rb.rotation.eulerAngles} v {v} teleported {teleported} t {Time.realtimeSinceStartup:F2}"); }
             SetHolder(NoHolder);
             return true;
         }
@@ -210,7 +233,15 @@ namespace PowerCutCrew.Net
         /// <summary>The same spin on the host and in the holder's ghost, so both land alike (a random spin made them diverge).</summary>
         private static Vector3 ReleaseSpin(Vector3 velocity)
         {
-            return velocity.sqrMagnitude > 0.01f ? Vector3.Cross(Vector3.up, velocity).normalized * 2f : Vector3.zero;
+            // a gentle drop does not tumble (a tipping corner is where host and holder drift apart); a throw spins up
+            float k = Mathf.Clamp01((velocity.magnitude - 3f) / 3f);
+            return k > 0f ? Vector3.Cross(Vector3.up, velocity).normalized * 2f * k : Vector3.zero;
+        }
+
+        /// <summary>Released items start level (yaw only), the same on the host and in the holder's copy.</summary>
+        private static Quaternion ReleaseRotation(Quaternion hand)
+        {
+            return Quaternion.Euler(0f, hand.eulerAngles.y, 0f);
         }
 
         private void Detach()
@@ -294,6 +325,7 @@ namespace PowerCutCrew.Net
         private void OnHolderChanged(ulong previous, ulong current)
         {
             ulong local = NetworkManager.LocalClientId;
+            if (_ghostActive && current != NoHolder && current != local) { _ghostRegrabbed = true; }
             if (current == local)
             {
                 CancelGhost();
@@ -312,11 +344,19 @@ namespace PowerCutCrew.Net
             DestroyCopy();
             _heldCopy = Instantiate(_visualRoot.gameObject, NetPlayer.Local.Controller.Hand);
             _heldCopy.name = "HeldCopy";
-            _heldCopy.transform.localPosition = Vector3.zero;
-            _heldCopy.transform.localRotation = Quaternion.identity;
+            // the copy sits where the visual would be if the item's own pivot were in the hand (the pose the host teleports the item to)
+            _heldCopy.transform.localPosition = transform.InverseTransformPoint(_visualRoot.position);
+            _heldCopy.transform.localRotation = Quaternion.Inverse(transform.rotation) * _visualRoot.rotation;
             _heldSince = Time.realtimeSinceStartup;
             SetNetworkedRenderers(false);
             SetRaycastable(false);
+        }
+
+        /// <summary>Holder's machine: where the local copy is right now (while it exists).</summary>
+        public bool TryGetCopyPosition(out Vector3 position)
+        {
+            position = _heldCopy != null ? _heldCopy.transform.position : default;
+            return _heldCopy != null;
         }
 
         private void EndHeldCopy()
@@ -336,25 +376,43 @@ namespace PowerCutCrew.Net
             var box = GetComponent<BoxCollider>();
             Transform t = _heldCopy.transform;
             t.SetParent(null, true);
+            // level, exactly like the host does when it teleports the item (the copy's pivot is the item's pivot, see BeginHeldCopy)
+            Quaternion visualInItem = Quaternion.Inverse(transform.rotation) * _visualRoot.rotation;
+            Quaternion handRotation = t.rotation * Quaternion.Inverse(visualInItem);
+            t.rotation = ReleaseRotation(handRotation) * visualInItem;
             _ghostBody = _heldCopy.AddComponent<Rigidbody>();
             _ghostBody.mass = _rb.mass;
+            _ghostBody.linearDamping = _rb.linearDamping;
+            _ghostBody.angularDamping = _rb.angularDamping;
             _ghostBody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             if (box != null)
             {
+                // the same box as the host's collider, expressed in the copy's local space (the copy has its own scale and pivot)
                 var bc = _heldCopy.AddComponent<BoxCollider>();
-                bc.size = Vector3.Scale(box.size, transform.lossyScale);
-                bc.center = box.center;
+                Vector3 ratio = DivideScale(box.transform.lossyScale, _visualRoot.lossyScale);
+                bc.size = Vector3.Scale(box.size, ratio);
+                bc.center = _visualRoot.InverseTransformPoint(box.transform.TransformPoint(box.center));   // item-relative, so it does not depend on where either object is now
+                bc.sharedMaterial = box.sharedMaterial;
+                // nor with the networked item it stands for (it is still at the holder's hand, hidden, and would shove the copy away)
+                foreach (Collider own in GetComponentsInChildren<Collider>()) { Physics.IgnoreCollision(bc, own); }
                 // do not collide with the local player
                 if (NetPlayer.Local != null)
                 {
                     foreach (Collider c in NetPlayer.Local.GetComponentsInChildren<Collider>()) { Physics.IgnoreCollision(bc, c); }
                 }
             }
+            if (LaunchArgs.Has("-botlog")) { Debug.Log($"[Net] ghost start {_kind}: pos {t.position} rot {t.rotation.eulerAngles} v {velocity} t {Time.realtimeSinceStartup:F2}"); }
             _ghostBody.linearVelocity = velocity;
             _ghostBody.angularVelocity = ReleaseSpin(velocity);
             _ghostActive = true;
+            _ghostRegrabbed = false;
             _ghostStart = Time.realtimeSinceStartup;
             SetRaycastable(true);
+        }
+
+        private static Vector3 DivideScale(Vector3 a, Vector3 b)
+        {
+            return new Vector3(a.x / Mathf.Max(0.0001f, b.x), a.y / Mathf.Max(0.0001f, b.y), a.z / Mathf.Max(0.0001f, b.z));
         }
 
         private void CancelGhost()
@@ -387,9 +445,17 @@ namespace PowerCutCrew.Net
             NetTuning tuning = NetTuning.Instance;
             if (t > tuning.GhostMinSeconds && (d < tuning.GhostHandoverDistance || settled || t > tuning.GhostMaxSeconds))
             {
-                NetMetrics.Sample("releasePopCm", d * 100.0);
-                NetMetrics.Sample("releasePopCm_" + _kind, d * 100.0);
+                if (!IsHeld && !_ghostRegrabbed && d < 1.5f)   // somebody grabbing / throwing it again meanwhile is not a prediction error
+                {
+                    NetMetrics.Sample("releasePopCm", d * 100.0);
+                    NetMetrics.Sample("releasePopCm_" + _kind, d * 100.0);
+                }
+                else
+                {
+                    NetMetrics.Count("releasePopInterfered");
+                }
                 Debug.Log($"[Net] release pop {_kind} {d * 100f:F0} cm after {t:F2} s (settled {settled}, confirmed {confirmed})");
+                Debug.Log($"[Net] release pop detail {_kind}: ghost {_heldCopy.transform.position} net {transform.position} ghostV {_ghostBody.linearVelocity.magnitude:F2} netSpeed {_netSpeed:F2}");
                 _ghostActive = false;
                 Destroy(_ghostBody);
                 foreach (Collider c in _heldCopy.GetComponents<Collider>()) { Destroy(c); }
@@ -404,7 +470,8 @@ namespace PowerCutCrew.Net
             copy.SetParent(null, true);
             Vector3 startPos = copy.position;
             Quaternion startRot = copy.rotation;
-            float duration = Mathf.Max(0.01f, NetTuning.Instance.HeldBlendSeconds);
+            // a big disagreement slides home at about 2 m/s at most instead of jumping
+            float duration = Mathf.Clamp(Vector3.Distance(startPos, transform.position) / 2f, Mathf.Max(0.01f, NetTuning.Instance.HeldBlendSeconds), 0.6f);
             for (float t = 0f; t < duration; t += Time.deltaTime)
             {
                 float k = Mathf.SmoothStep(0f, 1f, t / duration);
@@ -431,7 +498,7 @@ namespace PowerCutCrew.Net
         }
 
         /// <summary>The holder's own held item must not block their interaction raycast (it sits in front of the camera).</summary>
-        private void SetRaycastable(bool raycastable)
+        public void SetRaycastable(bool raycastable)
         {
             int layer = raycastable ? _originalLayer : IgnoreRaycastLayer;
             foreach (Collider c in GetComponentsInChildren<Collider>(true)) { c.gameObject.layer = layer; }
