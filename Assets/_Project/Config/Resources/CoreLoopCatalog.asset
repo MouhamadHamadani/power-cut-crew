@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 659e8665250f41349a0e97681867df53, type: 3}
+  m_Name: CoreLoopCatalog
+  m_EditorClassIdentifier: PowerCutCrew.Cables::PowerCutCrew.Cables.CoreLoopCatalog
+  Generator: {fileID: 2755433657591601896, guid: 6a1faee7e70adab4f9e562063a50d3a4, type: 3}
+  Drum: {fileID: 1159892912181883650, guid: 3a95164d21286d44183f3abf323ecab8, type: 3}
+  Socket: {fileID: 5581540776273002465, guid: 4f8d59ee7dde2be43a1ad7ab53c3a74c, type: 3}
+  Cable: {fileID: 3587945250689934800, guid: f22a0c85f047b6c4e9fb65d5fcf81b9f, type: 3}

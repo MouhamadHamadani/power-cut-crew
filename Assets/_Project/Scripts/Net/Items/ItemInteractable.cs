@@ -2,16 +2,25 @@ using PowerCutCrew.Core;
 
 namespace PowerCutCrew.Net
 {
-    /// <summary>Pick-up rule for a NetworkPhysicsItem: free, and the player holds nothing else.</summary>
+    /// <summary>Pick-up rule for a NetworkPhysicsItem: free, not locked, and the player holds nothing else.</summary>
     public class ItemInteractable : Interactable
     {
         private NetworkPhysicsItem _item;
 
         private NetworkPhysicsItem Item => _item != null ? _item : (_item = GetComponentInParent<NetworkPhysicsItem>());
 
+        public override string CurrentPromptKey
+        {
+            get
+            {
+                if (Item == null || Item.IsHeld || !Item.CanBeGrabbed || LocalHolding.Item != null) { return null; }
+                return base.CurrentPromptKey;
+            }
+        }
+
         public override bool IsAvailable(in InteractionContext context)
         {
-            return !Item.IsHeld && !NetworkPhysicsItem.PlayerHoldsAnything(context.PlayerId);
+            return !Item.IsHeld && Item.CanBeGrabbed && !NetworkPhysicsItem.PlayerHoldsAnything(context.PlayerId);
         }
 
         protected override void OnApproved(in InteractionContext context)

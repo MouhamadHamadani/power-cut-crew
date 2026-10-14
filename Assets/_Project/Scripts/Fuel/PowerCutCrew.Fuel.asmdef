@@ -2,7 +2,10 @@
     "name": "PowerCutCrew.Fuel",
     "rootNamespace": "PowerCutCrew.Fuel",
     "references": [
-        "PowerCutCrew.Core"
+        "PowerCutCrew.Core",
+        "PowerCutCrew.Net",
+        "Unity.Netcode.Runtime",
+        "Unity.Collections"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

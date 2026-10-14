@@ -15,12 +15,19 @@ namespace PowerCutCrew.Localization
         [SerializeField] private TMP_FontAsset _arabicFont;
 
         private RTLTextMeshPro _label;
+        private string _last;
         private TextAlignmentOptions _baseAlignment;
 
         public LocalizedString Text { get => _text; set => _text = value; }
 
         /// <summary>Optional wrapper for the localized text, for example value => "[E] " + value.</summary>
         public System.Func<string, string> Format { get; set; }
+
+        /// <summary>Re-apply the current string (after changing <see cref="Format"/> or the values it uses).</summary>
+        public void Refresh()
+        {
+            if (_last != null && _label != null) { _label.text = Format != null ? Format(_last) : _last; }
+        }
 
         /// <summary>Show the UI-table string with this key (empty key clears the label). Safe to call at runtime.</summary>
         public void SetKey(string key)
@@ -57,6 +64,7 @@ namespace PowerCutCrew.Localization
                 && LocalizationSettings.SelectedLocale.Identifier.Code == "ar";
             _label.font = arabic ? _arabicFont : _englishFont;
             _label.alignment = arabic ? Mirror(_baseAlignment) : _baseAlignment;
+            _last = value;
             _label.text = Format != null ? Format(value) : value;
         }
 

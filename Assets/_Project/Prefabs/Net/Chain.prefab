@@ -2073,6 +2073,9 @@ MonoBehaviour:
   - {fileID: 4172688991511713900}
   _syncRotation: 1
   _streamIndex: 0
+  _stride: 1
+  _rateHz: 0
+  _verifyTarget: 1
 --- !u!1 &8341238210943363834
 GameObject:
   m_ObjectHideFlags: 0

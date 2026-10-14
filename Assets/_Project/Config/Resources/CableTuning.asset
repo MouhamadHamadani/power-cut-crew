@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc73a9fcd5aaa624cbd86bc87f5679ae, type: 3}
+  m_Name: CableTuning
+  m_EditorClassIdentifier: PowerCutCrew.Cables::PowerCutCrew.Cables.CableTuning
+  RestLength: 12
+  SegmentCount: 30
+  SegmentMass: 0.3
+  PlugMass: 1
+  SegmentThickness: 0.06
+  SegmentSpring: 2500
+  SegmentDamper: 20
+  AngularLimitDegrees: 80
+  SnapStretch: 0.15
+  SnapSeconds: 0.5
+  PopOutStretch: 0.1
+  PopOutSeconds: 0.5
+  ReelReadySeconds: 3
+  PiecesDespawnSeconds: 8
+  PlugReach: 1.5

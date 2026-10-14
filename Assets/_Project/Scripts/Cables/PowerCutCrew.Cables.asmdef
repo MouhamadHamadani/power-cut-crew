@@ -2,7 +2,17 @@
     "name": "PowerCutCrew.Cables",
     "rootNamespace": "PowerCutCrew.Cables",
     "references": [
-        "PowerCutCrew.Core"
+        "PowerCutCrew.Core",
+        "PowerCutCrew.Net",
+        "PowerCutCrew.Fuel",
+        "PowerCutCrew.Generator",
+        "Unity.Netcode.Runtime",
+        "Unity.Collections",
+        "PowerCutCrew.Localization",
+        "Unity.Localization",
+        "Unity.ResourceManager",
+        "Unity.TextMeshPro",
+        "RTLTMPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

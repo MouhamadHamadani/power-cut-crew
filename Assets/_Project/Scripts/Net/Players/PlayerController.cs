@@ -19,7 +19,9 @@ namespace PowerCutCrew.Net
         private float _pitch;
         private float _vy;
         private float _eyeHeight;
-        private LayerMask _interactMask = ~0;
+        private LayerMask _interactMask = Physics.DefaultRaycastLayers;
+        private Interactable _holdTarget;
+        private float _holdTimer;
 
         public Transform CameraTarget => _cameraTarget;
 
@@ -89,19 +91,48 @@ namespace PowerCutCrew.Net
             if (Physics.Raycast(ray, out RaycastHit hit, t.InteractRange, _interactMask, QueryTriggerInteraction.Ignore))
             {
                 focus = hit.collider.GetComponentInParent<Interactable>();
-                if (focus != null && hit.distance > focus.MaxRange) { focus = null; }
+                if (focus != null && (hit.distance > focus.MaxRange || focus.CurrentPromptKey == null)) { focus = null; }
             }
             InteractionFocus.Set(focus);
 
             if (_net == null) { return; }
-            if (f.Interact && focus != null) { _net.RequestInteract(focus); }
+            UpdateHold(focus, f);
+            if (f.Interact && focus != null && !focus.IsHold) { _net.RequestInteract(focus); }
             if (f.Drop) { _net.RequestDrop(); }
             if (f.Throw) { _net.RequestThrow(_cameraTarget.forward + Vector3.up * 0.15f); }
         }
 
+        /// <summary>"Hold E" interactions: begin when E goes down on a hold target, keep alive while it stays down, end when released or the target changes.</summary>
+        private void UpdateHold(Interactable focus, PlayerFrame f)
+        {
+            bool holding = focus != null && focus.IsHold && f.InteractHeld;
+            if (!holding || focus != _holdTarget) { EndHold(); }
+            if (!holding) { return; }
+            if (_holdTarget == null)
+            {
+                _holdTarget = focus;
+                _holdTimer = 0f;
+                _net.RequestHold(focus, NetPlayer.HoldBegin);
+                return;
+            }
+            _holdTimer += Time.deltaTime;
+            if (_holdTimer >= NetTuning.Instance.HoldKeepAliveInterval)
+            {
+                _holdTimer = 0f;
+                _net.RequestHold(focus, NetPlayer.HoldKeepAlive);
+            }
+        }
+
+        private void EndHold()
+        {
+            if (_holdTarget == null) { return; }
+            if (_net != null) { _net.RequestHold(_holdTarget, NetPlayer.HoldEnd); }
+            _holdTarget = null;
+        }
+
         private void OnDisable()
         {
-            if (IsOwner) { InteractionFocus.Set(null); }
+            if (IsOwner) { EndHold(); InteractionFocus.Set(null); }
         }
     }
 }

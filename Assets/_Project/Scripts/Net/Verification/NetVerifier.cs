@@ -29,7 +29,7 @@ namespace PowerCutCrew.Net
                     versions.Add(item.HolderVersion);
                     holders.Add(item.HolderClientId);
                 }
-                SnapshotStream chain = FindFirstObjectByType<SnapshotStream>();
+                SnapshotStream chain = SnapshotStream.VerifyTarget;
                 ushort seq = chain != null ? chain.ReceivedSeq : (ushort)0;
                 Vector3[] pos = chain != null && chain.ReceivedPositions != null ? (Vector3[])chain.ReceivedPositions.Clone() : new Vector3[0];
                 NetPlayer.Local.SendVerify(indices.ToArray(), versions.ToArray(), holders.ToArray(), seq, pos);

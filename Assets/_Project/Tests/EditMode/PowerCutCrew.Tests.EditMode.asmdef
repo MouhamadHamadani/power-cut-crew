@@ -11,7 +11,10 @@
         "Unity.ResourceManager",
         "PowerCutCrew.Net",
         "Unity.Netcode.Runtime",
-        "Unity.Collections"
+        "Unity.Collections",
+        "PowerCutCrew.Fuel",
+        "PowerCutCrew.Generator",
+        "PowerCutCrew.Cables"
     ],
     "includePlatforms": [
         "Editor"

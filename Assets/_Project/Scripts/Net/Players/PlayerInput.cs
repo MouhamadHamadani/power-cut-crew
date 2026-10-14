@@ -11,6 +11,7 @@ namespace PowerCutCrew.Net
         public float PitchDelta;    // degrees this frame (positive looks down)
         public bool Jump, Sprint, Crouch;
         public bool Interact;       // E or LMB pressed this frame
+        public bool InteractHeld;   // E held (hold interactions: pour, fill)
         public bool Drop;           // Q pressed this frame
         public bool Throw;          // RMB pressed this frame
     }
@@ -44,6 +45,7 @@ namespace PowerCutCrew.Net
                 Sprint = p.Sprint.IsPressed(),
                 Crouch = p.Crouch.IsPressed(),
                 Interact = p.Interact.WasPressedThisFrame() || p.Grab.WasPressedThisFrame(),
+                InteractHeld = p.Interact.IsPressed(),
                 Drop = p.Drop.WasPressedThisFrame(),
                 Throw = p.UseHit.WasPressedThisFrame(),
             };
