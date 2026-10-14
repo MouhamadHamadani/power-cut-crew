@@ -10,6 +10,7 @@ namespace PowerCutCrew.Net
     /// poses as one unreliable message at a fixed rate (only when something moved, plus a heartbeat). Clients buffer
     /// and interpolate onto visual-only transforms. Late joiners ask for a full snapshot on spawn.
     /// Many-body physics must sync through this, not through per-object NetworkTransforms.
+    /// With a stride above 1 only every Nth body is sent and the bodies in between are interpolated on the client.
     /// </summary>
     public class SnapshotStream : NetworkBehaviour
     {
@@ -21,10 +22,23 @@ namespace PowerCutCrew.Net
         [SerializeField] private Transform[] _bodies;
         [SerializeField] private bool _syncRotation = true;
         [SerializeField] private byte _streamIndex;
+        [Tooltip("Send every Nth body (the first and last are always sent); clients interpolate the bodies in between. Cuts the bandwidth of long chains and ropes.")]
+        [SerializeField] private int _stride = 1;
+        [Tooltip("Overrides NetTuning.SnapshotRateHz when above 0.")]
+        [SerializeField] private float _rateHz;
+        [SerializeField] private bool _verifyTarget;
 
+        /// <summary>The stream the late-join assertion checks (the chain).</summary>
+        public static SnapshotStream VerifyTarget { get; private set; }
+
+        public static IReadOnlyCollection<SnapshotStream> Streams => _streams.Values;
+
+        private int[] _sendIdx;
         private Vector3[] _pos;
         private Quaternion[] _rot;
         private Vector3[] _lastSent;
+        private Vector3[] _fullPos;
+        private Quaternion[] _fullRot;
         private ushort _seq;
         private float _nextSend;
         private float _lastSendTime;
@@ -36,22 +50,44 @@ namespace PowerCutCrew.Net
         public ulong StreamKey => (NetworkObjectId << 8) | _streamIndex;
         public int BodyCount => _bodies.Length;
 
+        /// <summary>The bodies this stream drives. On clients their transforms are set from snapshots.</summary>
+        public Transform[] Bodies => _bodies;
+
+        /// <summary>Set the bodies at runtime (before the object spawns), for streams whose bodies are created in code.</summary>
+        public void SetBodies(Transform[] bodies)
+        {
+            _bodies = bodies;
+        }
+
         /// <summary>Client: sequence number of the newest snapshot received.</summary>
         public ushort ReceivedSeq => _interp != null ? _interp.LatestSeq : (ushort)0;
 
+        /// <summary>Client: positions of the newest snapshot (only the sent bodies when the stride is above 1).</summary>
         public Vector3[] ReceivedPositions => _interp?.LatestPositions;
 
         public bool TryGetSentPositions(ushort seq, out Vector3[] positions) => _history.TryGetValue(seq, out positions);
 
         public ushort SentSeq => _seq;
 
+        /// <summary>Client: true once a snapshot has been applied.</summary>
+        public bool HasData => _interp != null && _interp.HasData;
+
         public override void OnNetworkSpawn()
         {
             int n = _bodies.Length;
-            _pos = new Vector3[n];
-            _rot = new Quaternion[n];
-            _lastSent = new Vector3[n];
+            int stride = Mathf.Max(1, _stride);
+            var idx = new List<int>();
+            for (int i = 0; i < n; i += stride) { idx.Add(i); }
+            if (idx[idx.Count - 1] != n - 1) { idx.Add(n - 1); }
+            _sendIdx = idx.ToArray();
+            int m = _sendIdx.Length;
+            _pos = new Vector3[m];
+            _rot = new Quaternion[m];
+            _lastSent = new Vector3[m];
+            _fullPos = new Vector3[n];
+            _fullRot = new Quaternion[n];
             _streams[StreamKey] = this;
+            if (_verifyTarget) { VerifyTarget = this; }
             if (IsServer)
             {
                 return;
@@ -74,6 +110,7 @@ namespace PowerCutCrew.Net
         public override void OnNetworkDespawn()
         {
             _streams.Remove(StreamKey);
+            if (VerifyTarget == this) { VerifyTarget = null; }
             if (_streams.Count == 0 && _handlerRegistered && NetworkManager != null && NetworkManager.CustomMessagingManager != null)
             {
                 NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
@@ -87,12 +124,12 @@ namespace PowerCutCrew.Net
         {
             if (!IsSpawned || !IsServer || Time.unscaledTime < _nextSend) { return; }
             NetTuning t = NetTuning.Instance;
-            _nextSend = Time.unscaledTime + 1f / t.SnapshotRateHz;
+            _nextSend = Time.unscaledTime + 1f / (_rateHz > 0f ? _rateHz : t.SnapshotRateHz);
             bool moved = false;
-            for (int i = 0; i < _bodies.Length; i++)
+            for (int k = 0; k < _sendIdx.Length; k++)
             {
-                Vector3 p = _bodies[i].position;
-                if ((p - _lastSent[i]).sqrMagnitude > t.SnapshotMotionThresholdMeters * t.SnapshotMotionThresholdMeters) { moved = true; }
+                Vector3 p = _bodies[_sendIdx[k]].position;
+                if ((p - _lastSent[k]).sqrMagnitude > t.SnapshotMotionThresholdMeters * t.SnapshotMotionThresholdMeters) { moved = true; }
             }
             if (!moved && Time.unscaledTime - _lastSendTime < t.SnapshotHeartbeatSeconds) { return; }
             _lastSendTime = Time.unscaledTime;
@@ -103,11 +140,12 @@ namespace PowerCutCrew.Net
         private byte[] Capture(bool full)
         {
             NetTuning t = NetTuning.Instance;
-            for (int i = 0; i < _bodies.Length; i++)
+            for (int k = 0; k < _sendIdx.Length; k++)
             {
-                _pos[i] = _bodies[i].position;
-                _rot[i] = _bodies[i].rotation;
-                _lastSent[i] = _pos[i];
+                Transform b = _bodies[_sendIdx[k]];
+                _pos[k] = b.position;
+                _rot[k] = b.rotation;
+                _lastSent[k] = _pos[k];
             }
             _seq++;
             if (LaunchArgs.Verify)
@@ -115,7 +153,7 @@ namespace PowerCutCrew.Net
                 _history[_seq] = (Vector3[])_pos.Clone();
                 _history.Remove((ushort)(_seq - 400));
             }
-            return SnapshotCodec.Encode(StreamKey, _seq, Time.unscaledTime, full, _pos, _syncRotation ? _rot : null, _bodies.Length,
+            return SnapshotCodec.Encode(StreamKey, _seq, Time.unscaledTime, full, _pos, _syncRotation ? _rot : null, _sendIdx.Length,
                 Vector3.zero, t.SnapshotExtentMeters);
         }
 
@@ -153,7 +191,7 @@ namespace PowerCutCrew.Net
 
         private void Receive(byte[] data, SnapshotHeader header)
         {
-            if (_interp == null || header.Count != _bodies.Length) { return; }
+            if (_interp == null || header.Count != _sendIdx.Length) { return; }
             SnapshotCodec.DecodeBodies(data, header, _pos, _rot, Vector3.zero, NetTuning.Instance.SnapshotExtentMeters);
             if (_interp.Push(Time.unscaledTime, header.Seq, header.HostTime, _pos, header.HasRotation ? _rot : null))
             {
@@ -170,11 +208,31 @@ namespace PowerCutCrew.Net
         {
             if (_interp == null || !_interp.HasData) { return; }
             if (!_interp.Sample(Time.unscaledTime, NetTuning.Instance.InterpolationBufferSeconds, _pos, _syncRotation ? _rot : null)) { return; }
+            Expand();
             for (int i = 0; i < _bodies.Length; i++)
             {
-                _bodies[i].position = _pos[i];
-                if (_syncRotation) { _bodies[i].rotation = _rot[i]; }
+                _bodies[i].position = _fullPos[i];
+                if (_syncRotation) { _bodies[i].rotation = _fullRot[i]; }
             }
+        }
+
+        /// <summary>Fill the bodies that were not sent by interpolating between the neighbours that were.</summary>
+        private void Expand()
+        {
+            for (int k = 0; k < _sendIdx.Length - 1; k++)
+            {
+                int a = _sendIdx[k];
+                int b = _sendIdx[k + 1];
+                for (int i = a; i < b; i++)
+                {
+                    float t = (float)(i - a) / (b - a);
+                    _fullPos[i] = Vector3.Lerp(_pos[k], _pos[k + 1], t);
+                    if (_syncRotation) { _fullRot[i] = Quaternion.Slerp(_rot[k], _rot[k + 1], t); }
+                }
+            }
+            int last = _sendIdx.Length - 1;
+            _fullPos[_bodies.Length - 1] = _pos[last];
+            if (_syncRotation) { _fullRot[_bodies.Length - 1] = _rot[last]; }
         }
     }
 }

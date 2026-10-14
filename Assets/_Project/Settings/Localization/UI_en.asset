@@ -96,6 +96,66 @@ MonoBehaviour:
     m_Localized: Pick up
     m_Metadata:
       m_Items: []
+  - m_Id: 637292698546176
+    m_Localized: Pull cord
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403776
+    m_Localized: Turn off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403777
+    m_Localized: Too hot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403778
+    m_Localized: Pour fuel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403779
+    m_Localized: Off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403780
+    m_Localized: Running
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403781
+    m_Localized: Out of fuel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403782
+    m_Localized: Overheated
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403783
+    m_Localized: Fuel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403784
+    m_Localized: Heat
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403785
+    m_Localized: '{0} / {1} A'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403786
+    m_Localized: Fill can
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403787
+    m_Localized: Plug in
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403788
+    m_Localized: Unplug
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403789
+    m_Localized: Take plug
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

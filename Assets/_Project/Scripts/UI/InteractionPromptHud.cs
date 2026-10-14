@@ -28,10 +28,26 @@ namespace PowerCutCrew.UI
             InteractionFocus.Changed -= OnFocusChanged;
         }
 
+        private string _shownKey;
+
         private void OnFocusChanged(Interactable target)
         {
-            _root.SetActive(target != null);
-            _label.SetKey(target != null ? target.PromptKey : null);
+            Refresh(target);
+        }
+
+        // the prompt can change while the player keeps looking at the same object (generator on/off, what is in hand)
+        private void Update()
+        {
+            Refresh(InteractionFocus.Current);
+        }
+
+        private void Refresh(Interactable target)
+        {
+            string key = target != null ? target.CurrentPromptKey : null;
+            if (key == _shownKey) { return; }
+            _shownKey = key;
+            _root.SetActive(key != null);
+            _label.SetKey(key);
         }
     }
 }

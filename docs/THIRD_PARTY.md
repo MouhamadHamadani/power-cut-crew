@@ -52,3 +52,5 @@ All SIL Open Font License 1.1. Source: https://github.com/google/fonts (license 
 `Packages/manifest.json` also lists `testables: com.unity.netcode.gameobjects` so NGO's integration test helpers can be used by our PlayMode test.
 The Steamworks.NET package bundles Valve's `steam_api64.dll`; Steam test App ID 480 (Spacewar) is used for development only (`steam_appid.txt`, development builds only).
 Shipping on Steam needs a real App ID (one-time Steam Direct fee per game), which is outside the zero-cost rule and is not part of this prompt.
+
+Prompt 04 (core loop: generator, fuel, cables) added **no packages**. The cable is our own ConfigurableJoint chain (no rope asset), all meshes are grey-box primitives, no new fonts.

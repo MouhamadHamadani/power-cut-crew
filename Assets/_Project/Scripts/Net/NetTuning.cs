@@ -41,6 +41,21 @@ namespace PowerCutCrew.Net
 
         [Header("Held items")]
         public float HeldBlendSeconds = 0.15f;
+        [Tooltip("A release (drop, throw, plug-in) carries the holder's local hand pose; the host trusts it when it is this close (m) to where the host knows the holder is.")]
+        public float ReleasePoseTolerance = 2.5f;
+        public float ThrowSpeedMargin = 1.15f;
+        [Tooltip("After a local release the holder's copy keeps simulating until the networked item matches it (m) or this long (s).")]
+        public float GhostHandoverDistance = 0.05f;
+        public float GhostMinSeconds = 0.25f;
+        public float GhostMaxSeconds = 1.5f;
+        [Tooltip("Cans tumble less (and so land alike on the host and in the holder's copy): extra damping and a bounce-free grippy material.")]
+        public float CanLinearDamping = 0.3f;
+        public float CanAngularDamping = 2f;
+        public float CanFriction = 0.9f;
+
+        [Header("Hold interactions (pour, fill)")]
+        public float HoldKeepAliveInterval = 0.2f;
+        public float HoldKeepAliveTimeout = 0.5f;
 
         [Header("Network simulation")]
         [Tooltip("Scale applied to the Multiplayer Tools simulator delay so the measured RTT matches the profile (the simulator delays each direction twice).")]

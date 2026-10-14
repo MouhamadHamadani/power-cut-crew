@@ -91,6 +91,66 @@ MonoBehaviour:
     m_Key: interact.pickup
     m_Metadata:
       m_Items: []
+  - m_Id: 637292698546176
+    m_Key: gen.pull_cord
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403776
+    m_Key: gen.turn_off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403777
+    m_Key: gen.too_hot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403778
+    m_Key: gen.pour
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403779
+    m_Key: gen.state.off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403780
+    m_Key: gen.state.running
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403781
+    m_Key: gen.state.out_of_fuel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403782
+    m_Key: gen.state.overheated
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403783
+    m_Key: gen.fuel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403784
+    m_Key: gen.heat
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403785
+    m_Key: gen.load_format
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403786
+    m_Key: fuel.fill
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403787
+    m_Key: cable.plug_in
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403788
+    m_Key: cable.unplug
+    m_Metadata:
+      m_Items: []
+  - m_Id: 637292803403789
+    m_Key: cable.take_plug
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

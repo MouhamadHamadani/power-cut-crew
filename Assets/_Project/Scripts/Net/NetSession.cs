@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Netcode.Transports;
+using PowerCutCrew.Core;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -29,6 +30,12 @@ namespace PowerCutCrew.Net
 
         /// <summary>Menu message (UI string key) to show after returning to the main menu, then cleared.</summary>
         public static string PendingMenuMessageKey { get; set; }
+
+        /// <summary>Other assemblies (generator, cables) register their network prefabs here; raised on every peer when the session object is created.</summary>
+        public static event Action<NetworkManager> RegisterPrefabs;
+
+        /// <summary>Host: raised after the base world (cans, chain) is spawned, so other assemblies can spawn their own world objects.</summary>
+        public static event Action<WorldSpawner> WorldSpawning;
 
         [SerializeField] private NetworkManager _nm;
         [SerializeField] private MeteredUnityTransport _udp;
@@ -68,6 +75,9 @@ namespace PowerCutCrew.Net
             _lobby = gameObject.AddComponent<SteamLobbyService>();
             _lobby.JoinRequested += OnSteamJoinRequested;
             _nm.NetworkPrefabs_Add(_catalog);
+            RegisterPrefabs?.Invoke(_nm);
+            LocalHolding.Provider = () => NetworkPhysicsItem.HeldByLocal();
+            gameObject.AddComponent<HoldRegistry>();
             _nm.ConnectionApprovalCallback = OnApproval;
             _nm.OnServerStarted += OnServerStarted;
             _nm.OnServerStopped += OnServerStopped;
@@ -248,13 +258,14 @@ namespace PowerCutCrew.Net
             {
                 NetworkObject can = Instantiate(_catalog.Can, spawns[i].position, spawns[i].rotation);
                 can.Spawn();
-                can.GetComponent<NetworkPhysicsItem>().ServerInit(i, spawns[i].position);
+                can.GetComponent<NetworkPhysicsItem>().ServerInit(i);
             }
             if (_catalog.Chain != null && anchors.Chain != null)
             {
                 NetworkObject chain = Instantiate(_catalog.Chain, anchors.Chain.position, anchors.Chain.rotation);
                 chain.Spawn();
             }
+            WorldSpawning?.Invoke(new WorldSpawner());
         }
 
         private void SpawnPlayer(ulong clientId)
@@ -348,6 +359,17 @@ namespace PowerCutCrew.Net
             string invite = LaunchArgs.Get("+connect_lobby");
             if (!string.IsNullOrEmpty(invite)) { StartClient(ConnectionMode.Steam, invite); return true; }
             return false;
+        }
+    }
+
+    /// <summary>Handed to world-spawn hooks: spawn a network prefab on the host.</summary>
+    public class WorldSpawner
+    {
+        public NetworkObject Spawn(NetworkObject prefab, Vector3 position, Quaternion rotation)
+        {
+            NetworkObject o = UnityEngine.Object.Instantiate(prefab, position, rotation);
+            o.Spawn();
+            return o;
         }
     }
 

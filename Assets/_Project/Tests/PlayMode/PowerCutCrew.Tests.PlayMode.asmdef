@@ -12,7 +12,10 @@
         "PowerCutCrew.Net",
         "Unity.Netcode.Runtime",
         "Unity.Collections",
-        "Unity.Netcode.Runtime.Tests"
+        "Unity.Netcode.Runtime.Tests",
+        "PowerCutCrew.Fuel",
+        "PowerCutCrew.Generator",
+        "PowerCutCrew.Cables"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

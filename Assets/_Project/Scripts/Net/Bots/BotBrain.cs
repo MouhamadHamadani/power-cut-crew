@@ -24,9 +24,12 @@ namespace PowerCutCrew.Net
         private float _stuck;
         private float _checkTimer;
 
+        private readonly System.Collections.Generic.List<IBotBehaviour> _extensions = new System.Collections.Generic.List<IBotBehaviour>();
+
         public BotBrain(int seed)
         {
             _rng = new System.Random(seed);
+            foreach (System.Func<int, IBotBehaviour> make in BotExtensions.Factories) { _extensions.Add(make(seed)); }
         }
 
         private float R() => (float)_rng.NextDouble();
@@ -42,6 +45,10 @@ namespace PowerCutCrew.Net
         public PlayerFrame Read(PlayerController me, float dt)
         {
             var f = new PlayerFrame();
+            foreach (IBotBehaviour extension in _extensions)
+            {
+                if (extension.Act(me, ref f, dt)) { return f; }
+            }
             _stateTime += dt;
             _cooldown -= dt;
             Vector3 pos = me.transform.position;
@@ -164,7 +171,7 @@ namespace PowerCutCrew.Net
             }
         }
 
-        private NetworkPhysicsItem HeldByMe()
+        public static NetworkPhysicsItem HeldByMe()
         {
             foreach (NetworkPhysicsItem i in NetworkPhysicsItem.All)
             {
@@ -198,7 +205,7 @@ namespace PowerCutCrew.Net
         }
 
         /// <summary>Turn (yaw and pitch) towards a world point; returns the remaining angle error in degrees.</summary>
-        private static float AimAt(PlayerController me, Vector3 point, ref PlayerFrame f, float dt)
+        public static float AimAt(PlayerController me, Vector3 point, ref PlayerFrame f, float dt)
         {
             float rate = 360f * dt;
             Vector3 eye = me.CameraTarget.position;
@@ -214,7 +221,7 @@ namespace PowerCutCrew.Net
         }
 
         /// <summary>Walk towards a point on the ground; returns true when within arrive distance.</summary>
-        private static bool Walk(PlayerController me, Vector3 target, ref PlayerFrame f, float dt, float arrive)
+        public static bool Walk(PlayerController me, Vector3 target, ref PlayerFrame f, float dt, float arrive)
         {
             Vector3 d = target - me.transform.position;
             d.y = 0f;

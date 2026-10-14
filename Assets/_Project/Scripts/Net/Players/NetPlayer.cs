@@ -57,6 +57,12 @@ namespace PowerCutCrew.Net
         public override void OnNetworkSpawn()
         {
             ByClient[OwnerClientId] = this;
+            if (IsServer)
+            {
+                var hb = new GameObject($"HoldBody{OwnerClientId}");
+                _holdBody = hb.AddComponent<Rigidbody>();
+                _holdBody.isKinematic = true;
+            }
             PlayerTuning t = PlayerTuning.Instance;
             _holdPoint.localPosition = new Vector3(0f, t.EyeHeightStanding - t.HoldBelowEyes, t.HoldForward);
 
@@ -101,6 +107,8 @@ namespace PowerCutCrew.Net
                 // a player that leaves or crashes drops everything they held, in place
                 int dropped = NetworkPhysicsItem.HostReleaseAllHeldBy(PlayerId);
                 if (dropped > 0) { Debug.Log($"[Net] player {PlayerId} left: dropped {dropped} item(s) in place"); }
+                if (HoldRegistry.Instance != null) { HoldRegistry.Instance.EndAllFor(PlayerId); }
+                if (_holdBody != null) { Destroy(_holdBody.gameObject); }
             }
         }
 
@@ -136,39 +144,94 @@ namespace PowerCutCrew.Net
 
         // ---------- requests (owner -> host) ----------
 
+        public const byte HoldBegin = 0;
+        public const byte HoldKeepAlive = 1;
+        public const byte HoldEnd = 2;
+
+        private Rigidbody _holdBody;
+
+        /// <summary>Host: kinematic body that spring-held items (the cable plug) are pulled towards.</summary>
+        public Rigidbody HoldBody => _holdBody;
+
+        private static byte IndexOf(NetworkObject no, Interactable target)
+        {
+            Interactable[] all = no.GetComponentsInChildren<Interactable>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] == target) { return (byte)i; }
+            }
+            return 0;
+        }
+
         public void RequestInteract(Interactable target)
         {
             NetworkObject no = target.GetComponentInParent<NetworkObject>();
             if (no == null) { return; }
-            if (IsServer) { HostInteract(no); } else { InteractRpc(new NetworkObjectReference(no)); }
+            byte index = IndexOf(no, target);
+            Transform hand = _controller.Hand;
+            if (IsServer) { HostInteract(no, index, hand.position, hand.rotation); }
+            else { InteractRpc(new NetworkObjectReference(no), index, hand.position, hand.rotation); }
+        }
+
+        /// <summary>Begin, keep alive or end a "hold E" interaction (pour, fill).</summary>
+        public void RequestHold(Interactable target, byte phase)
+        {
+            NetworkObject no = target.GetComponentInParent<NetworkObject>();
+            if (no == null) { return; }
+            byte index = IndexOf(no, target);
+            Transform hand = _controller.Hand;
+            if (IsServer) { HostHold(no, index, phase, hand.position, hand.rotation); }
+            else { HoldRpc(new NetworkObjectReference(no), index, phase, hand.position, hand.rotation); }
         }
 
         public void RequestDrop()
         {
-            if (IsServer) { NetworkPhysicsItem.HostDrop(PlayerId); } else { DropRpc(); }
+            Vector3 velocity = transform.forward * PlayerTuning.Instance.DropForwardSpeed;
+            SendRelease(velocity, false);
         }
 
         public void RequestThrow(Vector3 direction)
         {
-            if (IsServer) { NetworkPhysicsItem.HostThrow(PlayerId, direction); } else { ThrowRpc(direction); }
+            if (direction.sqrMagnitude < 0.0001f) { return; }
+            SendRelease(direction.normalized * PlayerTuning.Instance.ThrowSpeed, true);
+        }
+
+        private void SendRelease(Vector3 velocity, bool isThrow)
+        {
+            Transform hand = _controller.Hand;
+            if (IsServer)
+            {
+                HostRelease(hand.position, hand.rotation, velocity, isThrow);
+                return;
+            }
+            // the holder's copy leaves the hand right now and keeps simulating locally (see NetworkPhysicsItem.BeginGhostRelease)
+            NetworkPhysicsItem.HeldByLocal()?.BeginGhostRelease(velocity);
+            ReleaseRpc(hand.position, hand.rotation, velocity, isThrow);
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
-        private void InteractRpc(NetworkObjectReference target)
+        private void InteractRpc(NetworkObjectReference target, byte index, Vector3 handPosition, Quaternion handRotation)
         {
-            if (target.TryGet(out NetworkObject no, NetworkManager)) { HostInteract(no); }
+            if (target.TryGet(out NetworkObject no, NetworkManager)) { HostInteract(no, index, handPosition, handRotation); }
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
-        private void DropRpc()
+        private void HoldRpc(NetworkObjectReference target, byte index, byte phase, Vector3 handPosition, Quaternion handRotation)
         {
-            NetworkPhysicsItem.HostDrop(PlayerId);
+            if (target.TryGet(out NetworkObject no, NetworkManager)) { HostHold(no, index, phase, handPosition, handRotation); }
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
-        private void ThrowRpc(Vector3 direction)
+        private void ReleaseRpc(Vector3 handPosition, Quaternion handRotation, Vector3 velocity, bool isThrow)
         {
-            NetworkPhysicsItem.HostThrow(PlayerId, direction);
+            HostRelease(handPosition, handRotation, velocity, isThrow);
+        }
+
+        private void HostRelease(Vector3 handPosition, Quaternion handRotation, Vector3 velocity, bool isThrow)
+        {
+            var request = new ReleaseRequest { HasPose = true, Position = handPosition, Rotation = handRotation, Velocity = velocity };
+            if (isThrow) { NetworkPhysicsItem.HostThrow(PlayerId, request); }
+            else { NetworkPhysicsItem.HostDrop(PlayerId, request); }
         }
 
         /// <summary>Bot-run assertion: send what this client sees to the host (see NetVerifyLog).</summary>
@@ -180,19 +243,55 @@ namespace PowerCutCrew.Net
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
         private void VerifyRpc(int[] items, int[] versions, ulong[] holders, ushort chainSeq, Vector3[] chainPositions)
         {
-            SnapshotStream chain = FindFirstObjectByType<SnapshotStream>();
-            bool ok = NetVerifyLog.Check(OwnerClientId, items, versions, holders, chainSeq, chainPositions, chain, out string message);
+            bool ok = NetVerifyLog.Check(OwnerClientId, items, versions, holders, chainSeq, chainPositions, SnapshotStream.VerifyTarget, out string message);
             NetMetrics.Count(ok ? "verifyOk" : "verifyFail");
             Debug.Log($"[Verify] {(ok ? "OK" : "FAIL")} {message}");
         }
 
-        private void HostInteract(NetworkObject target)
+        /// <summary>Bot-run assertion, part two: snapshot streams and the game-specific report (see NetVerifyExtras).</summary>
+        public void SendVerifyExtras(string report, ulong[] keys, ushort[] seqs, int[] counts, Vector3[] positions)
         {
-            Interactable interactable = target.GetComponentInChildren<Interactable>();
+            if (!IsServer) { VerifyExtrasRpc(report, keys, seqs, counts, positions); }
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+        private void VerifyExtrasRpc(string report, ulong[] keys, ushort[] seqs, int[] counts, Vector3[] positions)
+        {
+            NetVerifyExtras.Check(OwnerClientId, report, keys, seqs, counts, positions);
+        }
+
+        /// <summary>The context for a request: the claimed hand pose is only attached when the host trusts it.</summary>
+        private InteractionContext MakeContext(Vector3 handPosition, Quaternion handRotation)
+        {
+            bool trusted = ReleasePoseRule.Accept(handPosition, _holdPoint.position, NetTuning.Instance.ReleasePoseTolerance);
+            return trusted ? new InteractionContext(PlayerId, transform.position, handPosition, handRotation) : new InteractionContext(PlayerId, transform.position);
+        }
+
+        private static Interactable Resolve(NetworkObject target, byte index)
+        {
+            Interactable[] all = target.GetComponentsInChildren<Interactable>(true);
+            return index < all.Length ? all[index] : null;
+        }
+
+        private void HostInteract(NetworkObject target, byte index, Vector3 handPosition, Quaternion handRotation)
+        {
+            Interactable interactable = Resolve(target, index);
             if (interactable == null) { return; }
-            var context = new InteractionContext(PlayerId, transform.position);
-            if (interactable.HostTryInteract(context)) { NetMetrics.Count("interact"); }
+            if (interactable.HostTryInteract(MakeContext(handPosition, handRotation))) { NetMetrics.Count("interact"); }
             else { NetMetrics.Count("interactRejected"); }
+        }
+
+        private void HostHold(NetworkObject target, byte index, byte phase, Vector3 handPosition, Quaternion handRotation)
+        {
+            Interactable interactable = Resolve(target, index);
+            if (interactable == null || HoldRegistry.Instance == null) { return; }
+            ulong key = target.NetworkObjectId * 32UL + index;
+            HoldRegistry.Instance.Handle(this, interactable, key, phase, MakeContext(handPosition, handRotation));
+        }
+
+        private void FixedUpdate()
+        {
+            if (_holdBody != null) { _holdBody.MovePosition(_holdPoint.position); }
         }
     }
 }

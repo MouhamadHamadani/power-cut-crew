@@ -12,7 +12,8 @@ Design knowledge base: `docs/DESIGN.md`. Networking details and the two-PC Steam
 - A Unity process locks the project. Batchmode needs the Editor closed; with an Editor open, drive it via
   `unity command ...` (com.unity.pipeline) instead.
 - Run Unity from PowerShell with `Start-Process -Wait -PassThru` (a bare `&` returns before Unity finishes).
-- NGO's own tests are enabled (`testables`) for its integration helpers, so always pass `-testFilter PowerCutCrew`.
+- NGO's own tests are enabled (`testables`) for its integration helpers, so always pass `-testFilter PowerCutCrew` (without it PlayMode runs thousands of NGO tests and looks hung).
+- One `NetcodeIntegrationTest` fixture only (`Tests/PlayMode/NetIntegrationTests.cs`); the helper cannot cope with several.
 
 ```powershell
 $u = 'C:\Program Files\Unity\Hub\Editor\6000.3.26f1\Editor\Unity.exe'; $p = 'C:\Dev\power-cut-crew'
@@ -38,20 +39,20 @@ assembly name. Every system references `PowerCutCrew.Core`; nothing references `
 | Folder (`Scripts/`) | Assembly | Responsibility |
 |---|---|---|
 | Core | PowerCutCrew.Core | shared types, `TuningConfig`, `Interactable` + arbiter, generated `PlayerControls` |
-| Generator | PowerCutCrew.Generator | fuel, load (amps), heat, overload, breakdown states |
-| Cables | PowerCutCrew.Cables | physics rope generator→building, attach/detach/snap |
+| Generator | PowerCutCrew.Generator | `GeneratorModel` (pull cord, fuel burn, heat, overheat; plain C#), `PowerGrid`, `GeneratorNet`, panel, tank cap, pull cord |
+| Cables | PowerCutCrew.Cables | host-only physics rope generator→socket, `CableModel` (grab / plug / snap / pop-out / respawn timers), `PlugRules`, sockets, reels, core-loop world + bots + verify hooks |
 | Buildings | PowerCutCrew.Buildings | demand, subscription tier, happiness, payment |
-| Fuel | PowerCutCrew.Fuel | jerrycans, refill point, spills, fire |
+| Fuel | PowerCutCrew.Fuel | `FuelContainer` (plain C#), jerrycans, fuel drum; spills and fire later |
 | Breakdowns | PowerCutCrew.Breakdowns | typed failures with physical fixes |
 | Shift | PowerCutCrew.Shift | timer and score |
 | Economy | PowerCutCrew.Economy | upgrades between shifts |
 | Net | PowerCutCrew.Net | sessions, Steam lobbies, players, grabbable items, `SnapshotStream`, bots, metrics |
 | UI | PowerCutCrew.UI | menus, HUD, Bootstrap |
 | Localization | PowerCutCrew.Localization | language switching, RTL helpers (`LocalizedRtlText`) |
-| Editor | PowerCutCrew.Editor | editor-only: `ProjectSetup`, `ContentSetup`, `NetFoundationSetup`, `BuildTools` |
+| Editor | PowerCutCrew.Editor | editor-only: `ProjectSetup`, `ContentSetup`, `NetFoundationSetup`, `CoreLoopSetup`, `BuildTools` |
 
-Other folders: `Config/` (tuning assets; `Config/Resources/` holds `NetTuning`, `PlayerTuning`), `Scenes/` (Bootstrap →
-MainMenu → Street_Greybox), `Prefabs/Net/`, `Art/`, `Audio/`, `Settings/{Rendering,Input,Localization}`, `Tests/{EditMode,PlayMode}`.
+Other folders: `Config/` (tuning assets; `Config/Resources/` holds `NetTuning`, `PlayerTuning`, `GeneratorTuning`, `FuelTuning`, `CableTuning`, `CoreLoopCatalog`), `Scenes/` (Bootstrap →
+MainMenu → Street_Greybox), `Prefabs/Net/`, `Prefabs/CoreLoop/`, `Art/`, `Audio/`, `Settings/{Rendering,Input,Localization}`, `Tests/{EditMode,PlayMode}`.
 
 **Rules:** game rules live in plain C# classes; MonoBehaviours and network behaviours stay thin; every tunable number
 lives in a `TuningConfig` ScriptableObject, never hard-coded.
@@ -68,10 +69,16 @@ transport (`Steam`), Steamworks.NET. Host-authoritative P2P over Steam lobbies. 
 - **Held items:** the host owns the real item (kinematic follow of the holder's hold point). The **holder sees a local
   copy** attached to the hand (never trails the camera) and the networked item is hidden for them; on release the copy
   blends back (`NetTuning.HeldBlendSeconds`). Everyone else sees the networked item.
+- **Release:** drop / throw / plug-in requests carry the holder's hand pose (+ velocity); the host trusts the pose within `NetTuning.ReleasePoseTolerance`
+  (2.5 m, `ReleasePoseRule`) and teleports the item to it. The holder's copy keeps simulating as a ghost until the networked item catches up.
+- **Hold interactions** (pour, fill the can): `Interactable.IsHold`; the owner sends begin / keep-alive (0.2 s) / end, the host's `HoldRegistry` ticks them.
+- **Core loop:** generator (`GeneratorModel`, rated 10 A), fuel (`FuelContainer`), cables (`CableModel`, custom host-only rope), sockets (`PowerGrid`). Plain classes
+  hold the rules and are unit-tested; `GeneratorNet`, `CableNet`, `PowerSocket`, `FuelCan` are thin NetworkBehaviours. Details and bandwidth: `docs/NETWORKING.md`.
 - **Many-body physics** (cable, chains) syncs through `SnapshotStream`, **not** per-object NetworkTransforms.
 - Connection approval is `ConnectionRules` (full, version mismatch). Steam is only initialised when Steam mode is used.
 - Launch args: `-host`, `-client <ip>`, `-steamhost`, `-steamclient <lobbyId>`, `-bot`, `-duration <s>`, `-netsim none|bad|awful`,
-  `-seed <n>`, `-role <name>`, `-verify` (late-join assertion), `-holdforever`, `-botlog`. F1 = debug overlay (dev builds).
+  `-seed <n>`, `-role <name>`, `-verify` (late-join assertion), `-holdforever`, `-holdplug`, `-snapbias`, `-botlog`,
+  `-shotdir <dir> -shot playpanel|prompt|coreloop` (doc screenshots). F1 = debug overlay (dev builds).
 - `steam_appid.txt` (480) is copied for development builds only; release builds must not ship it.
 
 ## Arabic / localization
