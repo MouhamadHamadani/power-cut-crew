@@ -147,5 +147,66 @@ namespace PowerCutCrew.Tests.EditMode
             interp.SampleAt(0.05f, pos, rot);
             Assert.AreEqual(45f, Quaternion.Angle(Quaternion.identity, rot[0]), 0.1f);
         }
+
+        // ---------- delta mode (cables) ----------
+
+        private static Vector3[] RopePoints(int n, float spacing)
+        {
+            var p = new Vector3[n];
+            for (int i = 0; i < n; i++) { p[i] = new Vector3(3.3f + i * spacing * 0.9f, 0.05f + 0.03f * Mathf.Sin(i), -7.1f + i * spacing * 0.3f); }
+            return p;
+        }
+
+        [Test]
+        public void Delta_RoundTripsWithinHalfAStepPerAxis_AndTheErrorDoesNotAddUp()
+        {
+            const int n = 16;
+            Vector3[] pos = RopePoints(n, 0.8f);
+            byte[] data = SnapshotCodec.EncodeDelta(5UL, 9, 1.5f, false, pos, n, Vector3.zero, Extent);
+            Assert.IsNotNull(data);
+            Assert.IsTrue(SnapshotCodec.TryReadHeader(data, out SnapshotHeader h));
+            Assert.IsTrue(h.Delta);
+            Assert.AreEqual(n, h.Count);
+            var back = new Vector3[n];
+            SnapshotCodec.DecodeBodies(data, h, back, null, Vector3.zero, Extent);
+            for (int i = 0; i < n; i++)
+            {
+                Assert.That(Mathf.Abs(back[i].x - pos[i].x), Is.LessThanOrEqualTo(SnapshotCodec.DeltaStep * 0.5f + 0.001f), $"x {i}");
+                Assert.That(Mathf.Abs(back[i].y - pos[i].y), Is.LessThanOrEqualTo(SnapshotCodec.DeltaStep * 0.5f + 0.001f), $"y {i}");
+                Assert.That(Mathf.Abs(back[i].z - pos[i].z), Is.LessThanOrEqualTo(SnapshotCodec.DeltaStep * 0.5f + 0.001f), $"z {i}");
+            }
+        }
+
+        [Test]
+        public void Delta_IsAboutFortyPercentSmaller_ForASixteenPointRope()
+        {
+            int normal = SnapshotCodec.EncodedSize(16, false);
+            int delta = SnapshotCodec.EncodedSizeDelta(16);
+            Assert.AreEqual(112, normal);
+            Assert.AreEqual(67, delta);
+            Assert.That(delta / (float)normal, Is.LessThan(0.62f));
+            byte[] data = SnapshotCodec.EncodeDelta(5UL, 9, 1.5f, false, RopePoints(16, 0.8f), 16, Vector3.zero, Extent);
+            Assert.AreEqual(delta, data.Length);
+        }
+
+        [Test]
+        public void Delta_ReturnsNullWhenAStepIsTooBig_SoTheNormalEncodingTakesOver()
+        {
+            Vector3[] pos = RopePoints(6, 0.8f);
+            pos[3] += new Vector3(0f, 2f, 0f);   // a point 2 m off its neighbour: more than 127 steps
+            Assert.IsNull(SnapshotCodec.EncodeDelta(5UL, 9, 1.5f, false, pos, 6, Vector3.zero, Extent));
+        }
+
+        [Test]
+        public void Delta_HeaderCarriesTheFlags_AndTruncatedDataIsRejected()
+        {
+            byte[] data = SnapshotCodec.EncodeDelta(5UL, 9, 1.5f, true, RopePoints(8, 0.8f), 8, Vector3.zero, Extent);
+            Assert.IsTrue(SnapshotCodec.TryReadHeader(data, out SnapshotHeader h));
+            Assert.IsTrue(h.Full);
+            Assert.IsTrue(h.Delta);
+            var cut = new byte[data.Length - 1];
+            System.Array.Copy(data, cut, cut.Length);
+            Assert.IsFalse(SnapshotCodec.TryReadHeader(cut, out _));
+        }
     }
 }

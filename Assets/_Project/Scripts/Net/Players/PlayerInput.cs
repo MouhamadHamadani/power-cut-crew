@@ -26,6 +26,20 @@ namespace PowerCutCrew.Net
     {
         private readonly PlayerControls _controls = new PlayerControls();
 
+        /// <summary>A menu (the shift summary) wants the mouse: no walking, no looking, the cursor is free.</summary>
+        public static bool UiCapture
+        {
+            get => _uiCapture;
+            set
+            {
+                _uiCapture = value;
+                Cursor.lockState = value ? CursorLockMode.None : CursorLockMode.Locked;
+                Cursor.visible = value;
+            }
+        }
+
+        private static bool _uiCapture;
+
         public HumanInput()
         {
             _controls.Player.Enable();
@@ -34,6 +48,7 @@ namespace PowerCutCrew.Net
 
         public PlayerFrame Read(PlayerController player, float deltaTime)
         {
+            if (_uiCapture) { return default; }
             var p = _controls.Player;
             Vector2 look = p.Look.ReadValue<Vector2>() * PlayerTuning.Instance.LookSensitivity * 10f;
             return new PlayerFrame

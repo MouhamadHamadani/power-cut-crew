@@ -53,6 +53,12 @@ namespace PowerCutCrew.Net
             lock (_lock) { _recvBytes += bytes; _recvMsgs++; }
         }
 
+        /// <summary>The current value of a counter (0 when it never happened).</summary>
+        public static int GetCount(string key)
+        {
+            lock (_lock) { return _counters.TryGetValue(key, out int v) ? v : 0; }
+        }
+
         public static void Count(string key)
         {
             lock (_lock) { _counters[key] = (_counters.TryGetValue(key, out int v) ? v : 0) + 1; }

@@ -17,6 +17,17 @@ namespace PowerCutCrew.Generator
             _draw[socketId] = ampDraw;
         }
 
+        /// <summary>A building's demand changes all the time: set what this socket draws right now (when it is fed).</summary>
+        public void SetDraw(int socketId, float ampDraw)
+        {
+            if (_draw.ContainsKey(socketId)) { _draw[socketId] = ampDraw; }
+        }
+
+        public float GetDraw(int socketId) => _draw.TryGetValue(socketId, out float v) ? v : 0f;
+
+        /// <summary>Unplug everything (the street is reset between shifts).</summary>
+        public void DisconnectAll() => _outletToSocket.Clear();
+
         /// <summary>Feed a socket from an outlet. False when the socket is unknown or already fed.</summary>
         public bool Connect(int outlet, int socketId)
         {

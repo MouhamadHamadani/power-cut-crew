@@ -156,6 +156,166 @@ MonoBehaviour:
     m_Localized: Take plug
     m_Metadata:
       m_Items: []
+  - m_Id: 1458507856097280
+    m_Localized: Start shift
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926400
+    m_Localized: '{0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926401
+    m_Localized: '{0} $'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926402
+    m_Localized: '{0} / {1} A'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926403
+    m_Localized: Walk to the clipboard by the generator to start the shift
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926404
+    m_Localized: Shift over
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926405
+    m_Localized: 'Uptime: {0}%'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926406
+    m_Localized: 'Money earned: {0} $'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926407
+    m_Localized: 'Angry buildings: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926408
+    m_Localized: 'Generator overheats: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926409
+    m_Localized: 'Snapped cables: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926410
+    m_Localized: 'Failed cord pulls: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926411
+    m_Localized: Another shift
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926412
+    m_Localized: Back to menu
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926413
+    m_Localized: Waiting for host
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926414
+    m_Localized: The street loves you
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926415
+    m_Localized: Not bad, the neighbors will pay again
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926416
+    m_Localized: The neighbors are grumbling
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926417
+    m_Localized: They're buying their own generator
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926418
+    m_Localized: '{0} A'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926419
+    m_Localized: Abu Khalil's building
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926420
+    m_Localized: Umm Hassan's building
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926421
+    m_Localized: Hajj Salim's building
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926422
+    m_Localized: Madame Nada's tower
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926423
+    m_Localized: Lights, please! We're open for business!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926424
+    m_Localized: The fridge is sweating. Plug us in!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926425
+    m_Localized: Hello? The AC wants a word with the generator.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926426
+    m_Localized: Any day now, boys. Any day.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926427
+    m_Localized: Where's the power?!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926428
+    m_Localized: We paid our subscription, guys!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926429
+    m_Localized: It's dark in here. Even the cat left.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926430
+    m_Localized: My ice cream is soup now!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926431
+    m_Localized: Everybody switched the AC on at once. Sorry!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926432
+    m_Localized: It's 40 degrees! The AC is on, deal with it!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926433
+    m_Localized: More amps! The AC is hungry!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926434
+    m_Localized: Ignore the power spike, it's just the AC stretching.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926435
+    m_Localized: That's it! We're calling the other generator guy!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926436
+    m_Localized: We're not paying for this!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926437
+    m_Localized: Candles are cheaper than you!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926438
+    m_Localized: Never again! We're moving to the other street!
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

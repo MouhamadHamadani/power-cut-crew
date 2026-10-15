@@ -13,6 +13,9 @@ namespace PowerCutCrew.Cables
     public static class CoreLoopWorld
     {
         private static WorldSpawner _spawner;
+
+        /// <summary>Raised on the host when the generator, drum, sockets, cables and cans are in the world: buildings and the shift hook in here.</summary>
+        public static event System.Action<WorldSpawner> WorldBuilt;
         private static CoreLoopCatalog _catalog;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -50,6 +53,36 @@ namespace PowerCutCrew.Cables
                 var can = item.GetComponent<FuelCan>();
                 if (can != null && item.Index >= 0 && item.Index < a.CanStartFuel.Length) { can.HostSet(a.CanStartFuel[item.Index]); }
             }
+            WorldBuilt?.Invoke(spawner);
+        }
+
+        /// <summary>
+        /// Host: put the street back to the scene defaults for the next shift: everything let go, the generator off with its start fuel, a fresh cable on each reel
+        /// (nothing plugged in), every can back at its spawn point with its start fuel.
+        /// </summary>
+        public static void ResetStreet()
+        {
+            CoreLoopAnchors a = CoreLoopAnchors.Instance;
+            NetworkPhysicsItem.HostReleaseEverything();
+            foreach (CableNet c in new System.Collections.Generic.List<CableNet>(CableNet.All))
+            {
+                if (c != null && c.IsServer) { c.HostRemove(); }
+            }
+            GeneratorNet gen = GeneratorNet.Instance;
+            if (gen != null && gen.IsServer) { gen.HostReset(); }
+            foreach (NetworkPhysicsItem item in new System.Collections.Generic.List<NetworkPhysicsItem>(NetworkPhysicsItem.All))
+            {
+                if (item == null || !item.IsServer) { continue; }
+                var can = item.GetComponent<FuelCan>();
+                if (can == null) { continue; }
+                item.HostResetToHome();
+                if (a != null && item.Index >= 0 && item.Index < a.CanStartFuel.Length) { can.HostSet(a.CanStartFuel[item.Index]); }
+            }
+            if (gen != null && gen.IsServer && _spawner != null)
+            {
+                for (int outlet = 0; outlet < gen.Outlets.Length; outlet++) { SpawnCable(outlet); }
+            }
+            Debug.Log("[World] street reset to the scene defaults");
         }
 
         private static void OnRespawnRequested(int outlet)

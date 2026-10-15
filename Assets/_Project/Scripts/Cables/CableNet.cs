@@ -120,7 +120,7 @@ namespace PowerCutCrew.Cables
             _bodies[n] = transform;
             _stream.SetBodies(_bodies);
 
-            int longest = CableSpline.SampleCount(t.SegmentCount + 3, t.SplineSubdivisions) + 2;   // outlet + every segment + plug end (two tubes share this)
+            int longest = CableSpline.SampleCount(t.SegmentCount + 3, t.SplineSubdivisions) + 2 + t.SplineSubdivisions * 4;   // outlet + every segment + plug end (two tubes share this)
             _tube = new CableTubeMesh(t.TubeSides, t.TubeRadius, longest);
             _points.Capacity = Mathf.Max(_points.Capacity, t.SegmentCount + 3);
             _pieceB.Capacity = Mathf.Max(_pieceB.Capacity, t.SegmentCount + 3);
@@ -522,6 +522,15 @@ namespace PowerCutCrew.Cables
             return true;
         }
 
+        /// <summary>Host: take the cable out of the world (plugged or not): the street is being reset between shifts.</summary>
+        public void HostRemove()
+        {
+            if (!IsServer || !IsSpawned) { return; }
+            if (_socketRef != null) { ReleaseSocket(); }
+            _item.HostForceRelease();
+            NetworkObject.Despawn(true);
+        }
+
         /// <summary>Unplug into somebody's hands.</summary>
         public bool HostUnplug(int playerId)
         {
@@ -632,18 +641,33 @@ namespace PowerCutCrew.Cables
             _points.Add(start);
             if (snap < 0)
             {
-                for (int i = 1; i <= lastBody; i++) { _points.Add(_bodies[i].position); }
+                int[] sent = _stream.SentIndices;
+                int perInterval = t.SplineSubdivisions;
+                if (!IsServer && sent != null && _stream.HasData)
+                {
+                    // a client only has the points the host sent (every 2nd one): the spline goes through exactly those
+                    for (int k = 0; k < sent.Length; k++)
+                    {
+                        int body = sent[k];
+                        if (body >= 1 && body <= lastBody && body < n) { _points.Add(_bodies[body].position); }
+                    }
+                    perInterval *= Mathf.Max(1, sent.Length > 1 ? sent[1] - sent[0] : 1);   // the intervals are longer: keep the same density
+                }
+                else
+                {
+                    for (int i = 1; i <= lastBody; i++) { _points.Add(_bodies[i].position); }
+                }
                 _points.Add(end);
-                AddPiece(_points, t);
+                AddPiece(_points, perInterval);
             }
             else
             {
                 for (int i = 1; i < snap; i++) { _points.Add(_bodies[i].position); }
-                AddPiece(_points, t);
+                AddPiece(_points, t.SplineSubdivisions);
                 _pieceB.Clear();
                 for (int i = snap; i < n; i++) { _pieceB.Add(_bodies[i].position); }
                 _pieceB.Add(end);
-                AddPiece(_pieceB, t);
+                AddPiece(_pieceB, t.SplineSubdivisions);
             }
             _tube.Apply(_mesh);
             if (++_tubeFrames > 120)   // the first frames include one-off JIT and page-in costs
@@ -654,10 +678,10 @@ namespace PowerCutCrew.Cables
             }
         }
 
-        private void AddPiece(List<Vector3> points, CableTuning t)
+        private void AddPiece(List<Vector3> points, int subdivisions)
         {
             if (points.Count < 2) { return; }
-            CableSpline.Sample(points, t.SplineSubdivisions, _samples);
+            CableSpline.Sample(points, subdivisions, _samples);
             _tube.AddTube(_samples);
         }
     }

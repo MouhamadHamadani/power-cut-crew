@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cfe47f019f7a4a34a9d07ce3ad0469ec, type: 3}
+  m_Name: ShiftTuning
+  m_EditorClassIdentifier: PowerCutCrew.Shift::PowerCutCrew.Shift.ShiftTuning
+  DurationSeconds: 600
+  CountdownSeconds: 3
+  LovedFrom: 90
+  GoodFrom: 70
+  MehFrom: 40
+  DayAmbient: {r: 0.55, g: 0.6, b: 0.7, a: 1}
+  NightAmbient: {r: 0.08, g: 0.1, b: 0.18, a: 1}
+  NightSunIntensity: 0.12
+  MoodSeconds: 1.5
+  SyncRateHz: 4

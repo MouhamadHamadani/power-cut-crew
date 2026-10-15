@@ -151,6 +151,166 @@ MonoBehaviour:
     m_Key: cable.take_plug
     m_Metadata:
       m_Items: []
+  - m_Id: 1458507856097280
+    m_Key: shift.start
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926400
+    m_Key: shift.hud.time
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926401
+    m_Key: shift.hud.money
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926402
+    m_Key: shift.hud.load
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926403
+    m_Key: shift.hud.lobby
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926404
+    m_Key: shift.sum.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926405
+    m_Key: shift.sum.uptime
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926406
+    m_Key: shift.sum.money
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926407
+    m_Key: shift.sum.angry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926408
+    m_Key: shift.sum.overheats
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926409
+    m_Key: shift.sum.snaps
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926410
+    m_Key: shift.sum.pulls
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926411
+    m_Key: shift.sum.again
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926412
+    m_Key: shift.sum.menu
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926413
+    m_Key: shift.sum.waiting
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926414
+    m_Key: shift.verdict.loved
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926415
+    m_Key: shift.verdict.good
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926416
+    m_Key: shift.verdict.meh
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926417
+    m_Key: shift.verdict.bad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926418
+    m_Key: bld.amps_format
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926419
+    m_Key: bld.name.0
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926420
+    m_Key: bld.name.1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926421
+    m_Key: bld.name.2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926422
+    m_Key: bld.name.3
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926423
+    m_Key: bld.line.request.0
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926424
+    m_Key: bld.line.request.1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926425
+    m_Key: bld.line.request.2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926426
+    m_Key: bld.line.request.3
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926427
+    m_Key: bld.line.unpowered.0
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926428
+    m_Key: bld.line.unpowered.1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926429
+    m_Key: bld.line.unpowered.2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926430
+    m_Key: bld.line.unpowered.3
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926431
+    m_Key: bld.line.spike.0
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926432
+    m_Key: bld.line.spike.1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926433
+    m_Key: bld.line.spike.2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926434
+    m_Key: bld.line.spike.3
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926435
+    m_Key: bld.line.angry.0
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926436
+    m_Key: bld.line.angry.1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926437
+    m_Key: bld.line.angry.2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1458507981926438
+    m_Key: bld.line.angry.3
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

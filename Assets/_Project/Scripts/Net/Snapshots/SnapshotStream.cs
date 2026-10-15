@@ -27,6 +27,10 @@ namespace PowerCutCrew.Net
         [Tooltip("Overrides NetTuning.SnapshotRateHz when above 0.")]
         [SerializeField] private float _rateHz;
         [SerializeField] private bool _verifyTarget;
+        [Tooltip("Cables: full rate while a sent point moves faster than NetTuning.CableFastSpeed, NetTuning.CableSlowRateHz while it moves slower, nothing at rest (the heartbeat stays).")]
+        [SerializeField] private bool _adaptiveRate;
+        [Tooltip("Send positions as small steps from the previous point (about 40 % smaller; no rotations). Falls back to the normal encoding when a step is too big.")]
+        [SerializeField] private bool _deltaPositions;
 
         /// <summary>The stream the late-join assertion checks (the chain).</summary>
         public static SnapshotStream VerifyTarget { get; private set; }
@@ -39,6 +43,9 @@ namespace PowerCutCrew.Net
         private Vector3[] _lastSent;
         private Vector3[] _fullPos;
         private Quaternion[] _fullRot;
+        private Vector3[] _tickPos;
+        private float _tickTime;
+        private string _bytesKey;
         private ushort _seq;
         private float _nextSend;
         private float _lastSendTime;
@@ -49,6 +56,9 @@ namespace PowerCutCrew.Net
 
         public ulong StreamKey => (NetworkObjectId << 8) | _streamIndex;
         public int BodyCount => _bodies.Length;
+
+        /// <summary>Indices (into <see cref="Bodies"/>) of the bodies that are actually sent; the others are interpolated on clients.</summary>
+        public int[] SentIndices => _sendIdx;
 
         /// <summary>The bodies this stream drives. On clients their transforms are set from snapshots.</summary>
         public Transform[] Bodies => _bodies;
@@ -84,6 +94,8 @@ namespace PowerCutCrew.Net
             _pos = new Vector3[m];
             _rot = new Quaternion[m];
             _lastSent = new Vector3[m];
+            _tickPos = new Vector3[m];
+            _bytesKey = "snapBytes_" + name.Replace("(Clone)", "");
             _fullPos = new Vector3[n];
             _fullRot = new Quaternion[n];
             _streams[StreamKey] = this;
@@ -124,17 +136,25 @@ namespace PowerCutCrew.Net
         {
             if (!IsSpawned || !IsServer || Time.unscaledTime < _nextSend) { return; }
             NetTuning t = NetTuning.Instance;
-            _nextSend = Time.unscaledTime + 1f / (_rateHz > 0f ? _rateHz : t.SnapshotRateHz);
+            float now = Time.unscaledTime;
+            _nextSend = now + 1f / (_rateHz > 0f ? _rateHz : t.SnapshotRateHz);
             bool moved = false;
+            float fastestStep = 0f;
             for (int k = 0; k < _sendIdx.Length; k++)
             {
                 Vector3 p = _bodies[_sendIdx[k]].position;
                 if ((p - _lastSent[k]).sqrMagnitude > t.SnapshotMotionThresholdMeters * t.SnapshotMotionThresholdMeters) { moved = true; }
+                fastestStep = Mathf.Max(fastestStep, (p - _tickPos[k]).magnitude);
+                _tickPos[k] = p;
             }
-            if (!moved && Time.unscaledTime - _lastSendTime < t.SnapshotHeartbeatSeconds) { return; }
+            float elapsed = Mathf.Max(0.001f, now - _tickTime);
+            _tickTime = now;
+            if (!moved && now - _lastSendTime < t.SnapshotHeartbeatSeconds) { return; }
+            if (_adaptiveRate && moved && fastestStep / elapsed <= t.CableFastSpeed && now - _lastSendTime < 0.9f / Mathf.Max(0.1f, t.CableSlowRateHz)) { return; }   // slow: half rate
             _lastSendTime = Time.unscaledTime;
             byte[] data = Capture(false);
             Send(data, NetworkDelivery.UnreliableSequenced, ulong.MaxValue);
+            NetMetrics.Sample(_bytesKey, data.Length);
         }
 
         private byte[] Capture(bool full)
@@ -153,8 +173,20 @@ namespace PowerCutCrew.Net
                 _history[_seq] = (Vector3[])_pos.Clone();
                 _history.Remove((ushort)(_seq - 400));
             }
-            return SnapshotCodec.Encode(StreamKey, _seq, Time.unscaledTime, full, _pos, _syncRotation ? _rot : null, _sendIdx.Length,
-                Vector3.zero, t.SnapshotExtentMeters);
+            byte[] data = null;
+            if (_deltaPositions && !_syncRotation) { data = SnapshotCodec.EncodeDelta(StreamKey, _seq, Time.unscaledTime, full, _pos, _sendIdx.Length, Vector3.zero, t.SnapshotExtentMeters); }
+            if (data == null)
+            {
+                data = SnapshotCodec.Encode(StreamKey, _seq, Time.unscaledTime, full, _pos, _syncRotation ? _rot : null, _sendIdx.Length, Vector3.zero, t.SnapshotExtentMeters);
+            }
+            else if (LaunchArgs.Verify)
+            {
+                // what the decoder will have (steps are rounded): the late-join check compares against this
+                SnapshotCodec.TryReadHeader(data, out SnapshotHeader h);
+                SnapshotCodec.DecodeBodies(data, h, _pos, null, Vector3.zero, t.SnapshotExtentMeters);
+                _history[_seq] = (Vector3[])_pos.Clone();
+            }
+            return data;
         }
 
         private void Send(byte[] data, NetworkDelivery delivery, ulong clientId)

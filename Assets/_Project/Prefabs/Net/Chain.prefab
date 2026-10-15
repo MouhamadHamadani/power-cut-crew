@@ -2076,6 +2076,8 @@ MonoBehaviour:
   _stride: 1
   _rateHz: 0
   _verifyTarget: 1
+  _adaptiveRate: 1
+  _deltaPositions: 0
 --- !u!1 &8341238210943363834
 GameObject:
   m_ObjectHideFlags: 0

@@ -329,6 +329,12 @@ namespace PowerCutCrew.Net
             Raise(!string.IsNullOrEmpty(reason) && reason.StartsWith("net.error.") ? reason : "net.error.connect_failed");
         }
 
+        /// <summary>The player chose "Back to menu" (the host ending the session sends everybody back with the usual "host left" message).</summary>
+        public void LeaveToMenu()
+        {
+            ReturnToMenu(null);
+        }
+
         private void ReturnToMenu(string messageKey)
         {
             PendingMenuMessageKey = messageKey;

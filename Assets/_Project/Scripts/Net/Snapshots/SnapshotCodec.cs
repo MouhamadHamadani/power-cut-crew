@@ -11,6 +11,7 @@ namespace PowerCutCrew.Net
         public float HostTime;
         public bool Full;
         public bool HasRotation;
+        public bool Delta;
         public int Count;
     }
 
@@ -25,9 +26,44 @@ namespace PowerCutCrew.Net
         public const int HeaderSize = 8 + 2 + 4 + 1 + 1;
         private const byte FlagFull = 1;
         private const byte FlagRotation = 2;
+        private const byte FlagDelta = 4;
+        /// <summary>Resolution of a delta step (m): the largest step is 127 of them, 1.27 m.</summary>
+        public const float DeltaStep = 0.01f;
         private const float QuatRange = 0.70710678f;
 
         public static int EncodedSize(int count, bool rotation) => HeaderSize + count * (6 + (rotation ? 4 : 0));
+
+        /// <summary>Delta mode: the first position is absolute (6 bytes), every other one is 3 signed bytes relative to the previous decoded one.</summary>
+        public static int EncodedSizeDelta(int count) => HeaderSize + (count > 0 ? 6 + (count - 1) * 3 : 0);
+
+        /// <summary>
+        /// Delta-coded positions (no rotations): about 40 % smaller. Each step is quantised against the position the decoder will have, so the error
+        /// never adds up (at most half a step per axis). Returns null when a step is too big for a signed byte: encode that snapshot normally.
+        /// </summary>
+        public static byte[] EncodeDelta(ulong streamKey, ushort seq, float hostTime, bool full, Vector3[] positions, int count, Vector3 origin, float extent)
+        {
+            var buf = new byte[EncodedSizeDelta(count)];
+            int o = 0;
+            BitConverter.GetBytes(streamKey).CopyTo(buf, o); o += 8;
+            BitConverter.GetBytes(seq).CopyTo(buf, o); o += 2;
+            BitConverter.GetBytes(hostTime).CopyTo(buf, o); o += 4;
+            buf[o++] = (byte)((full ? FlagFull : 0) | FlagDelta);
+            buf[o++] = (byte)count;
+            if (count == 0) { return buf; }
+            ushort qx = Quantize(positions[0].x - origin.x, extent), qy = Quantize(positions[0].y - origin.y, extent), qz = Quantize(positions[0].z - origin.z, extent);
+            WriteU16(buf, ref o, qx); WriteU16(buf, ref o, qy); WriteU16(buf, ref o, qz);
+            Vector3 previous = new Vector3(Dequantize(qx, extent) + origin.x, Dequantize(qy, extent) + origin.y, Dequantize(qz, extent) + origin.z);
+            for (int i = 1; i < count; i++)
+            {
+                int dx = Mathf.RoundToInt((positions[i].x - previous.x) / DeltaStep);
+                int dy = Mathf.RoundToInt((positions[i].y - previous.y) / DeltaStep);
+                int dz = Mathf.RoundToInt((positions[i].z - previous.z) / DeltaStep);
+                if (Mathf.Abs(dx) > 127 || Mathf.Abs(dy) > 127 || Mathf.Abs(dz) > 127) { return null; }
+                buf[o++] = (byte)(sbyte)dx; buf[o++] = (byte)(sbyte)dy; buf[o++] = (byte)(sbyte)dz;
+                previous += new Vector3(dx, dy, dz) * DeltaStep;
+            }
+            return buf;
+        }
 
         public static byte[] Encode(ulong streamKey, ushort seq, float hostTime, bool full, Vector3[] positions, Quaternion[] rotations,
             int count, Vector3 origin, float extent)
@@ -62,13 +98,27 @@ namespace PowerCutCrew.Net
             header.Count = data[o];
             header.Full = (flags & FlagFull) != 0;
             header.HasRotation = (flags & FlagRotation) != 0;
-            return data.Length >= EncodedSize(header.Count, header.HasRotation);
+            header.Delta = (flags & FlagDelta) != 0;
+            return data.Length >= (header.Delta ? EncodedSizeDelta(header.Count) : EncodedSize(header.Count, header.HasRotation));
         }
 
         /// <summary>Decode the bodies into the arrays (which must hold at least header.Count entries).</summary>
         public static void DecodeBodies(byte[] data, SnapshotHeader header, Vector3[] positions, Quaternion[] rotations, Vector3 origin, float extent)
         {
             int o = HeaderSize;
+            if (header.Delta)
+            {
+                if (header.Count == 0) { return; }
+                Vector3 previous = new Vector3(Dequantize(ReadU16(data, ref o), extent) + origin.x, Dequantize(ReadU16(data, ref o), extent) + origin.y, Dequantize(ReadU16(data, ref o), extent) + origin.z);
+                positions[0] = previous;
+                for (int i = 1; i < header.Count; i++)
+                {
+                    previous += new Vector3((sbyte)data[o], (sbyte)data[o + 1], (sbyte)data[o + 2]) * DeltaStep;
+                    o += 3;
+                    positions[i] = previous;
+                }
+                return;
+            }
             for (int i = 0; i < header.Count; i++)
             {
                 float x = Dequantize(ReadU16(data, ref o), extent) + origin.x;

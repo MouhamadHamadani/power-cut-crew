@@ -89,6 +89,71 @@ namespace PowerCutCrew.Tests.EditMode
         }
     }
 
+    public class CableSparseSplineTests
+    {
+        /// <summary>A rope laid in a gentle S-curve (and a tighter arc): every 2nd point is what a client receives.</summary>
+        private static Vector3 Curve(float arcLength, float radius)
+        {
+            float a = arcLength / radius;
+            return new Vector3(Mathf.Sin(a) * radius, 0.05f, (1f - Mathf.Cos(a)) * radius);
+        }
+
+        private static float DistanceToSegment(Vector3 p, Vector3 a, Vector3 b)
+        {
+            Vector3 ab = b - a;
+            float t = ab.sqrMagnitude < 1e-12f ? 0f : Mathf.Clamp01(Vector3.Dot(p - a, ab) / ab.sqrMagnitude);
+            return Vector3.Distance(p, a + ab * t);
+        }
+
+        private static float WorstDeviation(float radius, out Vector3 firstSample, out Vector3 first, out Vector3 lastSample, out Vector3 last)
+        {
+            const int segments = 30;
+            const float segment = 0.4f;
+            var all = new List<Vector3>();
+            for (int i = 0; i <= segments; i++) { all.Add(Curve(i * segment, radius)); }
+            var sent = new List<Vector3>();
+            for (int i = 0; i <= segments; i += 2) { sent.Add(all[i]); }
+            var samples = new List<Vector3>();
+            CableSpline.Sample(sent, 8, samples);
+            first = all[0];
+            last = all[segments];
+            firstSample = samples[0];
+            lastSample = samples[samples.Count - 1];
+            // the spline is between the received points: how far is it from the true rope at the points that were not sent?
+            float worst = 0f;
+            for (int i = 1; i < segments; i += 2)
+            {
+                float nearest = float.MaxValue;
+                for (int k = 0; k + 1 < samples.Count; k++) { nearest = Mathf.Min(nearest, DistanceToSegment(all[i], samples[k], samples[k + 1])); }   // to the curve, not just to its samples
+                worst = Mathf.Max(worst, nearest);
+            }
+            return worst;
+        }
+
+        [TestCase(6.0f)]
+        [TestCase(4.0f)]
+        [TestCase(3.0f)]
+        public void SplineThroughEverySecondPoint_MatchesTheEndsExactly_AndStaysWithin2cmOfARopeLaidInAGentleCurve(float radius)
+        {
+            float worst = WorstDeviation(radius, out Vector3 firstSample, out Vector3 first, out Vector3 lastSample, out Vector3 last);
+            Debug.Log($"[CableSpline] sparse (every 2nd of 31 points), curve radius {radius} m: worst deviation {worst * 100f:F2} cm");
+            Assert.AreEqual(first, firstSample);
+            Assert.AreEqual(last, lastSample);
+            Assert.Less(worst, 0.02f, "a spline through every second rope point must stay within 2 cm of the real rope");
+        }
+
+        [TestCase(2.0f)]
+        [TestCase(1.0f)]
+        [TestCase(0.6f)]
+        public void TightCurves_AreReportedNotAsserted(float radius)
+        {
+            float worst = WorstDeviation(radius, out Vector3 firstSample, out Vector3 first, out Vector3 lastSample, out Vector3 last);
+            Debug.Log($"[CableSpline] sparse (every 2nd of 31 points), TIGHT curve radius {radius} m: worst deviation {worst * 100f:F2} cm");
+            Assert.AreEqual(first, firstSample);
+            Assert.AreEqual(last, lastSample);
+        }
+    }
+
     public class CableTubeMeshTests
     {
         [Test]

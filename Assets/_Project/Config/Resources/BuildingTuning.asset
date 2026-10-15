@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c99fab5700ed5f44ba73a67591bdb1bc, type: 3}
+  m_Name: BuildingTuning
+  m_EditorClassIdentifier: PowerCutCrew.Buildings::PowerCutCrew.Buildings.BuildingTuning
+  RequestMin: 60
+  RequestMax: 120
+  QuietMin: 30
+  QuietMax: 60
+  InitialDelayMin: 3
+  InitialDelayMax: 25
+  MaxRequesting: 3
+  SpikeChance: 0.2
+  SpikeMultiplier: 1.5
+  SpikeSeconds: 20
+  StartHappiness: 70
+  RisePerSecond: 2
+  FallPerSecond: 3
+  RatePerAmpPerMinute: 1
+  UnpoweredLineSeconds: 10
+  BubbleSeconds: 3
+  SyncRateHz: 4
+  Buildings:
+  - NameKey: bld.name.0
+    SubscriptionAmps: 5
+    SeedOffset: 11
+    HeightMeters: 3.6
+  - NameKey: bld.name.1
+    SubscriptionAmps: 5
+    SeedOffset: 23
+    HeightMeters: 6.4
+  - NameKey: bld.name.2
+    SubscriptionAmps: 5
+    SeedOffset: 37
+    HeightMeters: 4.8
+  - NameKey: bld.name.3
+    SubscriptionAmps: 10
+    SeedOffset: 53
+    HeightMeters: 8

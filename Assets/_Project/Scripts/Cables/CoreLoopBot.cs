@@ -13,6 +13,14 @@ namespace PowerCutCrew.Cables
     /// </summary>
     public class CoreLoopBot : IBotBehaviour
     {
+        /// <summary>The shift's bot sets these (null in a plain street): which free socket to plug into, which plugged socket to unplug,
+        /// and whether anybody needs a plug moved right now.</summary>
+        public static System.Func<System.Random, PowerSocket> ChooseFreeSocket;
+        public static System.Func<PowerSocket> ChooseSocketToUnplug;
+        public static System.Func<bool> PlugWanted;
+
+        private PowerSocket _unplugTarget;
+
         private enum Goal { None, PullCord, GetCan, FillCan, PourCan, GetPlug, CarryPlug, DragAway, Unplug }
 
         private readonly System.Random _rng;
@@ -120,10 +128,15 @@ namespace PowerCutCrew.Cables
             }
 #endif
             bool running = gen.State == GeneratorState.Running;
-            if (R() < 0.25f && AnyOccupiedSocket(30f) != null) { Set(Goal.Unplug); return; }
+            if (ChooseSocketToUnplug != null)
+            {
+                PowerSocket moveAway = ChooseSocketToUnplug();
+                if (moveAway != null && R() < 0.7f) { _unplugTarget = moveAway; Set(Goal.Unplug); return; }
+            }
+            else if (R() < 0.25f && AnyOccupiedSocket(30f) != null) { _unplugTarget = null; Set(Goal.Unplug); return; }
             if (!running && gen.State != GeneratorState.Overheated && gen.Fuel > 0.5f && R() < 0.8f) { Set(Goal.PullCord); return; }
             if (gen.Fuel < gen.Capacity * 0.6f && R() < 0.7f) { Set(Goal.GetCan); return; }
-            if (R() < 0.6f && HasPlugToTake()) { Set(Goal.GetPlug); return; }
+            if (R() < 0.6f && HasPlugToTake() && (PlugWanted == null || PlugWanted())) { Set(Goal.GetPlug); return; }
         }
 
         private static bool HasPlugToTake()
@@ -152,6 +165,11 @@ namespace PowerCutCrew.Cables
         private void PickSocket()
         {
             _targetSocket = null;
+            if (ChooseFreeSocket != null)
+            {
+                _targetSocket = ChooseFreeSocket(_rng);
+                if (_targetSocket != null) { MaybeDragAway(); return; }
+            }
             PowerSocket best = null;
             float bestScore = float.MinValue;
             foreach (PowerSocket s in PowerSocket.All)
@@ -162,6 +180,11 @@ namespace PowerCutCrew.Cables
                 if (score > bestScore) { bestScore = score; best = s; }
             }
             _targetSocket = best;
+            MaybeDragAway();
+        }
+
+        private void MaybeDragAway()
+        {
             if (R() < (LaunchArgs.Has("-snapbias") ? 0.6f : 0.07f))
             {
                 Set(Goal.DragAway);
@@ -325,7 +348,7 @@ namespace PowerCutCrew.Cables
                 if (held.Kind == "plug") { f.Drop = _goalTime > 4f; }
                 return held.Kind != "plug" ? true : _goalTime > 4f;
             }
-            PowerSocket s = AnyOccupiedSocket();
+            PowerSocket s = _unplugTarget != null && _unplugTarget.Occupied ? _unplugTarget : AnyOccupiedSocket();
             if (s == null) { return true; }
             Vector3 stand = s.transform.position + Flat(s.transform.forward).normalized * 1.5f;
             if (Approach(me, stand, s.PlugPoint.position, ref f, dt)) { PressInteract(ref f, 0.8f); }

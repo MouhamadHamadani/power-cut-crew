@@ -422,6 +422,8 @@ namespace PowerCutCrew.Editor
             sso.FindProperty("_stride").intValue = 2;
             sso.FindProperty("_rateHz").floatValue = 20f;
             sso.FindProperty("_streamIndex").intValue = 0;
+            sso.FindProperty("_adaptiveRate").boolValue = true;     // full rate while moving fast, half rate slowly, nothing at rest
+            sso.FindProperty("_deltaPositions").boolValue = true;   // small steps from point to point
             sso.ApplyModifiedPropertiesWithoutUndo();
 
             var cable = root.AddComponent<CableNet>();
