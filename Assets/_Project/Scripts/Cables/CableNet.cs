@@ -41,6 +41,8 @@ namespace PowerCutCrew.Cables
         private readonly List<Vector3> _points = new List<Vector3>(64);
         private readonly List<Vector3> _samples = new List<Vector3>(256);
         private readonly List<Vector3> _pieceB = new List<Vector3>(64);
+        private readonly System.Diagnostics.Stopwatch _meshTimer = new System.Diagnostics.Stopwatch();
+        private int _tubeFrames;
 
         // host: how the plug sits in a socket (it slides in first and is pinned when it arrives)
         private enum Seat { None, Sliding, Seated }
@@ -118,7 +120,11 @@ namespace PowerCutCrew.Cables
             _bodies[n] = transform;
             _stream.SetBodies(_bodies);
 
-            _tube = new CableTubeMesh(t.TubeSides, t.TubeRadius);
+            int longest = CableSpline.SampleCount(t.SegmentCount + 3, t.SplineSubdivisions) + 2;   // outlet + every segment + plug end (two tubes share this)
+            _tube = new CableTubeMesh(t.TubeSides, t.TubeRadius, longest);
+            _points.Capacity = Mathf.Max(_points.Capacity, t.SegmentCount + 3);
+            _pieceB.Capacity = Mathf.Max(_pieceB.Capacity, t.SegmentCount + 3);
+            _samples.Capacity = Mathf.Max(_samples.Capacity, longest);
             _mesh = new Mesh { name = "CableTube" };
             _mesh.MarkDynamic();
             _tubeMaterial = new Material(_segmentMaterial);
@@ -600,7 +606,7 @@ namespace PowerCutCrew.Cables
         private void RebuildTube()
         {
             if (_tube == null || _bodies == null) { return; }
-            var timer = System.Diagnostics.Stopwatch.StartNew();
+            _meshTimer.Restart();
             CableTuning t = CableTuning.Instance;
             int n = _bodies.Length - 1;
             GeneratorNet gen = GeneratorNet.Instance;
@@ -640,7 +646,12 @@ namespace PowerCutCrew.Cables
                 AddPiece(_pieceB, t);
             }
             _tube.Apply(_mesh);
-            NetMetrics.Sample("cableMeshMs", timer.Elapsed.TotalMilliseconds);
+            if (++_tubeFrames > 120)   // the first frames include one-off JIT and page-in costs
+            {
+                double ms = _meshTimer.Elapsed.TotalMilliseconds;
+                NetMetrics.Sample("cableMeshMs", ms);
+                if (ms > 1.0) { NetMetrics.Count("cableMeshOver1ms"); }
+            }
         }
 
         private void AddPiece(List<Vector3> points, CableTuning t)

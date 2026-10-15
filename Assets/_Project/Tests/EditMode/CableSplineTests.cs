@@ -159,6 +159,92 @@ namespace PowerCutCrew.Tests.EditMode
         }
     }
 
+    public class CableRebuildAllocationTests
+    {
+        private static void Rebuild(List<Vector3> points, List<Vector3> samples, CableTubeMesh tube, Mesh mesh, float t)
+        {
+            // a rope that moves a little every frame, the same work CableNet.RebuildTube does
+            for (int i = 0; i < points.Count; i++) { points[i] = new Vector3(i * 0.4f, 0.05f + 0.02f * Mathf.Sin(t + i), 0.1f * Mathf.Cos(t + i * 0.3f)); }
+            tube.Clear();
+            CableSpline.Sample(points, 4, samples);
+            tube.AddTube(samples);
+            tube.Apply(mesh);
+        }
+
+        /// <summary>Bytes the whole editor allocated in the frame that just ended (Unity's own "GC Allocated In Frame" counter).</summary>
+        private static long AllocatedLastFrame(Unity.Profiling.ProfilerRecorder recorder) => recorder.LastValue;
+
+        [UnityEngine.TestTools.UnityTest]
+        public System.Collections.IEnumerator TheRebuildDoesNotAllocate_AndTheProbeCanSeeAllocations()
+        {
+            var points = new List<Vector3>(33);
+            for (int i = 0; i < 32; i++) { points.Add(Vector3.zero); }
+            var samples = new List<Vector3>(CableSpline.SampleCount(32, 4) + 2);
+            var tube = new CableTubeMesh(6, 0.025f, CableSpline.SampleCount(32, 4) + 2);
+            var mesh = new Mesh();
+            using (Unity.Profiling.ProfilerRecorder recorder = Unity.Profiling.ProfilerRecorder.StartNew(Unity.Profiling.ProfilerCategory.Memory, "GC Allocated In Frame"))
+            {
+                for (int i = 0; i < 5; i++) { Rebuild(points, samples, tube, mesh, i * 0.1f); yield return null; }   // warm up
+
+                long idle = 0;
+                for (int i = 0; i < 5; i++) { yield return null; idle = System.Math.Max(idle, AllocatedLastFrame(recorder)); }   // what an empty frame costs here
+
+                for (int i = 0; i < 200; i++) { Rebuild(points, samples, tube, mesh, 3f + i * 0.02f); }   // 200 rebuilds inside one frame
+                yield return null;
+                long rebuilds = AllocatedLastFrame(recorder);
+
+                var garbage = new List<int[]>();
+                for (int i = 0; i < 200; i++) { garbage.Add(new int[2048]); }   // control: 1.6 MB of real garbage in one frame
+                yield return null;
+                long control = AllocatedLastFrame(recorder);
+
+                Assert.Greater(control, 1000000, $"the profiler counter does not see allocations here (control frame {control} bytes)");
+                Assert.LessOrEqual(rebuilds, idle + 256, $"200 rebuilds allocated about {rebuilds - idle} bytes more than an idle frame (idle {idle}, with rebuilds {rebuilds})");
+                Assert.AreEqual(200, garbage.Count);
+            }
+            Object.DestroyImmediate(mesh);
+        }
+
+        [Test]
+        public void ARebuildIsWellUnderAMillisecond()
+        {
+            var points = new List<Vector3>(33);
+            for (int i = 0; i < 32; i++) { points.Add(Vector3.zero); }
+            var samples = new List<Vector3>(CableSpline.SampleCount(32, 4) + 2);
+            var tube = new CableTubeMesh(6, 0.025f, CableSpline.SampleCount(32, 4) + 2);
+            var mesh = new Mesh();
+            for (int i = 0; i < 50; i++) { Rebuild(points, samples, tube, mesh, i * 0.1f); }
+            var timer = new System.Diagnostics.Stopwatch();
+            double worst = 0.0, sum = 0.0;
+            const int runs = 500;
+            for (int i = 0; i < runs; i++)
+            {
+                timer.Restart();
+                Rebuild(points, samples, tube, mesh, i * 0.05f);
+                double ms = timer.Elapsed.TotalMilliseconds;
+                sum += ms;
+                worst = System.Math.Max(worst, ms);
+            }
+            Debug.Log($"[CableTube] {runs} rebuilds of a 32-point cable: average {sum / runs:F3} ms, worst {worst:F3} ms");
+            Assert.Less(sum / runs, 0.5, "the average rebuild should be far below a millisecond");
+            Object.DestroyImmediate(mesh);
+        }
+
+        [Test]
+        public void TheArraysAreSizedForTheLongestCable_SoTheyNeverGrowInPlay()
+        {
+            int samples = CableSpline.SampleCount(33, 4);
+            var tube = new CableTubeMesh(6, 0.025f, samples + 2);
+            int vertexCapacity = tube.VertexCapacity;
+            int indexCapacity = tube.IndexCapacity;
+            var line = new List<Vector3>();
+            for (int i = 0; i < samples; i++) { line.Add(new Vector3(i * 0.1f, 0f, 0f)); }
+            tube.AddTube(line);
+            Assert.AreEqual(vertexCapacity, tube.VertexCapacity);
+            Assert.AreEqual(indexCapacity, tube.IndexCapacity);
+        }
+    }
+
     public class CableTuningInvariantTests
     {
         [Test]
