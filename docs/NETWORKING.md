@@ -110,7 +110,7 @@ latency it can lose the race with the transport disconnect and the client then s
 
 NGO's integration helpers work on 2.13.3 (they are exposed with `testables`), see `Tests/PlayMode/NetIntegrationTests.cs`.
 **Always run PlayMode with `-testFilter PowerCutCrew`**: without it the runner also runs NGO's own test suite (thousands of tests, it looks like a hang).
-Keep one `NetcodeIntegrationTest` fixture per assembly (all net tests live in `NetIntegrationTests`), give spawned objects an explicit `NetworkManager`
+Two fixtures exist and work together (`NetIntegrationTests`, `CableSettleTests`); give spawned objects an explicit `NetworkManager`
 (`NetworkObject.InstantiateAndSpawn(prefab, networkManager, ...)`), and put a ground under the test world.
 
 ## Core loop (Prompt 04)
@@ -154,4 +154,33 @@ bot bumps it or it lands on a prop the host and the holder diverge by 30 to 70 c
 
 Plug local copy to socket at plug-in: 10 samples, **99.8 cm on average (max 109 cm)**. The rule only needs the hand within 1.5 m of the socket, the bots plug in from about a metre; the
 plug then slides to the socket.
+
+## Cable rendering and settling (fix/cable-visuals)
+
+- **One tube per cable.** The per-segment boxes are hidden (they only exist as colliders on the host). `CableNet.RebuildTube()` draws the cable as a single mesh in
+  `LateUpdate`, on the host and on every client alike: a Catmull-Rom spline (`CableSpline`, 4 samples per segment) through the rope points, turned into a 6-sided tube of
+  radius 0.025 m, colour `#05070F` (`CableTubeMesh`, parallel-transport rings, flat end caps; both are plain C# and unit-tested). The first point is exactly the generator
+  outlet and the last is exactly the back of the plug (`PlugBackOffset` behind its pivot). The holder's client ends the tube at the back of their local copy in the hand
+  (the last three networked bodies are skipped, they lag behind the hand). A snapped cable is two tubes in one mesh. The tube is rebuilt every frame from whatever points
+  the machine has, so it needs no extra network data.
+- **Prompt 05: the spline renderer there is this one.** Its section 1 only changes which points are sent (`CableSpline.Sample` takes any list of points).
+- **Plug-in.** The released plug slides into the socket (`PlugSlideSpeed` 1.5 m/s) and is only pinned when it has arrived. Then the rope's last joint is attached to the socket's
+  kinematic anchor body (`PowerSocket.AnchorBody`, at the seated plug's back) instead of to the plug. A seated plug points into the wall, its back faces out. The tension rules
+  ignore the rope while it slides and for `SeatGraceSeconds` after. When the plug leaves the socket (unplug, pop-out) the joint goes back to the plug and every
+  collision ignore is undone.
+- **Collisions ignored:** every rope segment and the plug against each other, against the generator (always), and against the socket plate and the wall behind it
+  (colliders within 0.3 m of the plug point, only while plugged; never the floor: ignoring it made the rope fall through the ground).
+- **Settling.** Rope bodies: solver iterations 24, velocity iterations 12, linear / angular damping 1.5 / 3, joint bending damper 0.05, sleep threshold 0.01, depenetration at
+  most 0.5 m/s, plug 2 kg on 0.5 kg segments (ratio 4, never above 10). The old numbers (0.3 kg segments, spring 2500) made a cable lying alone on the ground jitter at about 1.5 J
+  all the time; spring 1000 / damper 80 with the heavier segments is silent. The rope's physics material takes the *lower* friction of rope and ground (0.3): with "maximum" the
+  rope stuck to the floor and then slipped in bursts (stick-slip, 0.1 to 7 J kicks every few seconds).
+- **Slack.** When plugged, the rope is lengthened (up to 1.25 x) if the socket is closer than 105 % of its length, so it sags instead of hanging tight (`SlackFraction`).
+- **Settle check.** `CableNet.RopeKineticEnergy()` (host) sums the segments' kinetic energy. `CableSettleTests` (own host-only fixture: in one process the clients' kinematic copies of
+  the plug would sit where the host's plug is and shove the rope) plugs a cable into a socket beside the generator, steps the player away and asserts the energy is below
+  0.01 J within 2 s and stays below for 10 s. In the bot runs the host records `ropeSettleSeconds` (and counts `ropeUnsettled`).
+
+Measured (development build, `-netsim bad`, host + 3 bots, 180 s, 0 errors and 0 exceptions): host upload 149 kbps average, 317 kbps peak (before the fix: 144 to 174 / 314 to 359,
+nothing in the rope sync changed); client download 43 kbps average, 93 kbps peak. In-game rope settle after plug-in: 7 samples, 0.77 s on average, 1.0 s at most, none unsettled.
+Frame time with both cables moving: host 18.2 ms, clients 17.8 ms average (headless 480 x 270, so GPU cost is not in it; before the fix 17.3 to 17.5 ms on the host); the tube rebuild
+costs 0.175 ms per cable per frame on average (0.35 ms for both, worst single frame 4.5 ms).
 

@@ -57,10 +57,25 @@ namespace PowerCutCrew.Tests.PlayMode
         protected override IEnumerator OnTearDown()
         {
             CableNet.RespawnRequested -= OnRespawn;
+            // the world this fixture spawned must not outlive the test (old ropes would collide with the next test's rope)
+            if (m_ServerNetworkManager != null && m_ServerNetworkManager.IsListening)
+            {
+                foreach (NetworkObject spawned in new System.Collections.Generic.List<NetworkObject>(m_ServerNetworkManager.SpawnManager.SpawnedObjectsList))
+                {
+                    if (spawned != null && spawned.IsSpawned && !spawned.IsPlayerObject) { spawned.Despawn(true); }
+                }
+            }
+            yield return null;
             NetworkPhysicsItem.ResetStatics();
             if (_ground != null) { Object.Destroy(_ground); }
             if (_registry != null) { Object.Destroy(_registry); }
             yield return base.OnTearDown();
+            // whatever the network managers left behind (their world objects are not destroyed with them): gone before the next test
+            foreach (CableNet c in Object.FindObjectsByType<CableNet>(FindObjectsSortMode.None)) { Object.Destroy(c.gameObject); }
+            foreach (GeneratorNet g in Object.FindObjectsByType<GeneratorNet>(FindObjectsSortMode.None)) { Object.Destroy(g.gameObject); }
+            foreach (PowerSocket p in Object.FindObjectsByType<PowerSocket>(FindObjectsSortMode.None)) { Object.Destroy(p.gameObject); }
+            foreach (FuelDrum d in Object.FindObjectsByType<FuelDrum>(FindObjectsSortMode.None)) { Object.Destroy(d.gameObject); }
+            yield return null;
         }
 
         // ---------- world ----------
@@ -91,6 +106,12 @@ namespace PowerCutCrew.Tests.PlayMode
             yield return WaitForConditionOrTimeOut(() => NetPlayer.ByClient.ContainsKey(A.LocalClientId) && NetPlayer.ByClient.ContainsKey(B.LocalClientId)
                 && Mirror(A, _hostGenerator) != null && Mirror(B, _hostGenerator) != null && Mirror(B, _hostSocket) != null);
             AssertOnTimeout("world did not spawn on the clients");
+            // the test players only supply poses: no input, no gravity, no pushing (a character controller overlapping rope or items drifts out of range)
+            foreach (NetPlayer anyPlayer in Object.FindObjectsByType<NetPlayer>(FindObjectsSortMode.None))
+            {
+                if (anyPlayer.IsOwner) { anyPlayer.Controller.enabled = false; }
+                foreach (Collider c in anyPlayer.GetComponentsInChildren<Collider>()) { if (!(c is CharacterController)) { c.enabled = false; } }
+            }
         }
 
         private static NetworkObject Mirror(NetworkManager nm, NetworkObject hostObject)

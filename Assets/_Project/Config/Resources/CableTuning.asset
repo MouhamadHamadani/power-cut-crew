@@ -14,11 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: PowerCutCrew.Cables::PowerCutCrew.Cables.CableTuning
   RestLength: 12
   SegmentCount: 30
-  SegmentMass: 0.3
-  PlugMass: 1
+  SegmentMass: 0.5
+  PlugMass: 2
   SegmentThickness: 0.06
-  SegmentSpring: 2500
-  SegmentDamper: 20
+  SegmentSpring: 1000
+  SegmentDamper: 80
   AngularLimitDegrees: 80
   SnapStretch: 0.15
   SnapSeconds: 0.5
