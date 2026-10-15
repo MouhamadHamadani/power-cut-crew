@@ -13,7 +13,8 @@ Design knowledge base: `docs/DESIGN.md`. Networking details and the two-PC Steam
   `unity command ...` (com.unity.pipeline) instead.
 - Run Unity from PowerShell with `Start-Process -Wait -PassThru` (a bare `&` returns before Unity finishes).
 - NGO's own tests are enabled (`testables`) for its integration helpers, so always pass `-testFilter PowerCutCrew` (without it PlayMode runs thousands of NGO tests and looks hung).
-- One `NetcodeIntegrationTest` fixture only (`Tests/PlayMode/NetIntegrationTests.cs`); the helper cannot cope with several.
+- Net integration tests: `NetIntegrationTests` (host + 2 clients) and `CableSettleTests` (host only). In one process all network managers share one physics world, so client copies of bodies
+  disturb host physics: tests of physics settling must be host-only. Test players only supply poses (disable `PlayerController` and push colliders).
 
 ```powershell
 $u = 'C:\Program Files\Unity\Hub\Editor\6000.3.26f1\Editor\Unity.exe'; $p = 'C:\Dev\power-cut-crew'
@@ -74,6 +75,8 @@ transport (`Steam`), Steamworks.NET. Host-authoritative P2P over Steam lobbies. 
 - **Hold interactions** (pour, fill the can): `Interactable.IsHold`; the owner sends begin / keep-alive (0.2 s) / end, the host's `HoldRegistry` ticks them.
 - **Core loop:** generator (`GeneratorModel`, rated 10 A), fuel (`FuelContainer`), cables (`CableModel`, custom host-only rope), sockets (`PowerGrid`). Plain classes
   hold the rules and are unit-tested; `GeneratorNet`, `CableNet`, `PowerSocket`, `FuelCan` are thin NetworkBehaviours. Details and bandwidth: `docs/NETWORKING.md`.
+- **Cable drawing:** one tube mesh per cable (`CableSpline` + `CableTubeMesh`, Catmull-Rom through the rope points, rebuilt every frame on every machine); the box segments are only colliders on the host.
+  The Prompt 05 spline uses the same renderer. Rope numbers (damping, solver, friction, slack, settle limits) are in `CableTuning`; `docs/NETWORKING.md` explains why.
 - **Many-body physics** (cable, chains) syncs through `SnapshotStream`, **not** per-object NetworkTransforms.
 - Connection approval is `ConnectionRules` (full, version mismatch). Steam is only initialised when Steam mode is used.
 - Launch args: `-host`, `-client <ip>`, `-steamhost`, `-steamclient <lobbyId>`, `-bot`, `-duration <s>`, `-netsim none|bad|awful`,

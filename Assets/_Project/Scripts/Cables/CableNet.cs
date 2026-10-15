@@ -35,7 +35,25 @@ namespace PowerCutCrew.Cables
         private ConfigurableJoint[] _joints;
         private Renderer[] _segmentRenderers;
         private GameObject _segmentRoot;
-        private LineRenderer _handRope;
+        private CableTubeMesh _tube;
+        private Mesh _mesh;
+        private Material _tubeMaterial;
+        private readonly List<Vector3> _points = new List<Vector3>(64);
+        private readonly List<Vector3> _samples = new List<Vector3>(256);
+        private readonly List<Vector3> _pieceB = new List<Vector3>(64);
+
+        // host: how the plug sits in a socket (it slides in first and is pinned when it arrives)
+        private enum Seat { None, Sliding, Seated }
+        private Seat _seat;
+        private Vector3 _slidePosition;
+        private Quaternion _slideRotation;
+        private ConfigurableJoint _anchorJoint;
+        private Collider[] _colliders;
+        private readonly List<(Collider rope, Collider other)> _socketIgnores = new List<(Collider, Collider)>();
+        private float _restLength;
+        private float _lengthScale = 1f;
+        private float _seatedAt;
+        private bool _settleReported;
         private NetworkPhysicsItem _item;
         private SnapshotStream _stream;
         private CableModel _model;
@@ -93,20 +111,24 @@ namespace PowerCutCrew.Cables
                 mesh.AddComponent<MeshFilter>().sharedMesh = _segmentMesh;
                 var r = mesh.AddComponent<MeshRenderer>();
                 r.sharedMaterial = _segmentMaterial;
+                r.enabled = false;   // the cable is drawn as one tube mesh, not as boxes
                 _segmentRenderers[i] = r;
                 _bodies[i] = seg.transform;
             }
             _bodies[n] = transform;
             _stream.SetBodies(_bodies);
 
-            var hand = new GameObject("HandRope");
-            hand.transform.SetParent(_segmentRoot.transform, false);
-            _handRope = hand.AddComponent<LineRenderer>();
-            _handRope.useWorldSpace = true;
-            _handRope.positionCount = 2;
-            _handRope.widthMultiplier = t.SegmentThickness;
-            _handRope.sharedMaterial = _segmentMaterial;
-            _handRope.enabled = false;
+            _tube = new CableTubeMesh(t.TubeSides, t.TubeRadius);
+            _mesh = new Mesh { name = "CableTube" };
+            _mesh.MarkDynamic();
+            _tubeMaterial = new Material(_segmentMaterial);
+            _tubeMaterial.SetColor("_BaseColor", t.CableColor);
+            _tubeMaterial.color = t.CableColor;
+            if (_tubeMaterial.HasProperty("_Smoothness")) { _tubeMaterial.SetFloat("_Smoothness", 0.25f); }
+            var tubeObject = new GameObject("Tube");
+            tubeObject.transform.SetParent(_segmentRoot.transform, false);
+            tubeObject.AddComponent<MeshFilter>().sharedMesh = _mesh;
+            tubeObject.AddComponent<MeshRenderer>().sharedMaterial = _tubeMaterial;
         }
 
         public override void OnNetworkSpawn()
@@ -142,6 +164,8 @@ namespace PowerCutCrew.Cables
         {
             base.OnDestroy();
             if (_segmentRoot != null) { Destroy(_segmentRoot); }
+            if (_mesh != null) { Destroy(_mesh); }
+            if (_tubeMaterial != null) { Destroy(_tubeMaterial); }
         }
 
         // ---------- host: build ----------
@@ -173,10 +197,13 @@ namespace PowerCutCrew.Cables
                 Transform body = _bodies[i];
                 body.SetPositionAndRotation(pos[i], rot);
                 Rigidbody rb = i < n ? body.gameObject.AddComponent<Rigidbody>() : _item.Body;
-                rb.mass = i < n ? t.SegmentMass : t.PlugMass;
-                rb.linearDamping = 0.4f;
-                rb.angularDamping = 3f;
-                rb.solverIterations = 20;
+                rb.mass = i < n ? t.SegmentMass : Mathf.Min(t.PlugMass, t.SegmentMass * t.MaxPlugToSegmentMassRatio);
+                rb.linearDamping = t.LinearDamping;
+                rb.angularDamping = t.AngularDamping;
+                rb.solverIterations = Mathf.Max(20, t.SolverIterations);
+                rb.solverVelocityIterations = Mathf.Max(10, t.SolverVelocityIterations);
+                rb.sleepThreshold = t.SleepThreshold;
+                rb.maxDepenetrationVelocity = t.MaxDepenetrationVelocity;
                 rb.interpolation = RigidbodyInterpolation.Interpolate;
                 rb.position = pos[i];
                 rb.rotation = rot;
@@ -184,6 +211,7 @@ namespace PowerCutCrew.Cables
                 {
                     var box = body.gameObject.AddComponent<BoxCollider>();
                     box.size = new Vector3(t.SegmentThickness, t.SegmentThickness, length * 0.95f);
+                    box.sharedMaterial = RopeMaterial(t);
                     colliders[i] = box;
                 }
                 else
@@ -196,25 +224,51 @@ namespace PowerCutCrew.Cables
             for (int i = 1; i <= n; i++)
             {
                 _joints[i] = _bodies[i].gameObject.AddComponent<ConfigurableJoint>();
-                ConfigureJoint(_joints[i], _rbs[i - 1], length, t);
+                ConfigureJoint(_joints[i], _rbs[i - 1], length, t, i == n);
             }
+            _colliders = colliders;
+            _restLength = t.RestLength;
             // segments must not collide with each other (or the plug)
             for (int i = 0; i <= n; i++)
             {
                 for (int j = i + 1; j <= n; j++) { Physics.IgnoreCollision(colliders[i], colliders[j]); }
             }
+            // ... nor with the generator they are attached to
+            foreach (Collider g in gen.GetComponentsInChildren<Collider>())
+            {
+                foreach (Collider c in colliders) { Physics.IgnoreCollision(c, g); }
+            }
         }
 
-        private static void ConfigureJoint(ConfigurableJoint j, Rigidbody previous, float length, CableTuning t)
+        private static PhysicsMaterial _ropeMaterial;
+
+        private static PhysicsMaterial RopeMaterial(CableTuning t)
+        {
+            if (_ropeMaterial == null)
+            {
+                _ropeMaterial = new PhysicsMaterial("Rope")
+                {
+                    bounciness = 0f, dynamicFriction = t.SegmentFriction, staticFriction = t.SegmentFriction + 0.1f,
+                    bounceCombine = PhysicsMaterialCombine.Minimum, frictionCombine = PhysicsMaterialCombine.Minimum,   // never grippier than the rope's own value: no stick-slip
+                };
+            }
+            return _ropeMaterial;
+        }
+
+        private static void ConfigureJoint(ConfigurableJoint j, Rigidbody previous, float length, CableTuning t, bool plugEnd)
         {
             j.connectedBody = previous;
             j.autoConfigureConnectedAnchor = false;
-            j.anchor = new Vector3(0f, 0f, -length * 0.5f);
+            // the rope's end is attached to the back of the plug, not to its middle
+            j.anchor = new Vector3(0f, 0f, plugEnd ? -t.PlugBackOffset : -length * 0.5f);
             j.connectedAnchor = new Vector3(0f, 0f, length * 0.5f);
             j.enablePreprocessing = false;
             j.xMotion = j.yMotion = j.zMotion = ConfigurableJointMotion.Free;
             var drive = new JointDrive { positionSpring = t.SegmentSpring, positionDamper = t.SegmentDamper, maximumForce = float.MaxValue };
             j.xDrive = j.yDrive = j.zDrive = drive;
+            var bend = new JointDrive { positionSpring = 0f, positionDamper = t.JointAngularDamper, maximumForce = float.MaxValue };
+            j.angularXDrive = bend;
+            j.angularYZDrive = bend;
             j.angularXMotion = j.angularYMotion = j.angularZMotion = ConfigurableJointMotion.Limited;
             var lim = new SoftJointLimit { limit = t.AngularLimitDegrees };
             j.angularYLimit = lim;
@@ -245,11 +299,23 @@ namespace PowerCutCrew.Cables
 
         // ---------- host: rules ----------
 
+        /// <summary>For the log lines: where the rope is stretched most ("joint 27: 3.21 m").</summary>
+        public string WorstGap()
+        {
+            int worst = 0; float gap = 0f;
+            for (int i = 0; i < _bodies.Length - 1; i++)
+            {
+                float d = Vector3.Distance(_bodies[i].position, _bodies[i + 1].position);
+                if (d > gap) { gap = d; worst = i; }
+            }
+            return $"widest gap after body {worst}: {gap:F2} m";
+        }
+
         private float ComputeStretch()
         {
             float path = 0f;
             for (int i = 0; i < _bodies.Length - 1; i++) { path += Vector3.Distance(_bodies[i].position, _bodies[i + 1].position); }
-            return Mathf.Max(0f, path / CableTuning.Instance.RestLength - 1f);
+            return Mathf.Max(0f, path / (_restLength > 0f ? _restLength : CableTuning.Instance.RestLength) - 1f);
         }
 
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
@@ -270,9 +336,10 @@ namespace PowerCutCrew.Cables
             if (held && (_model.State == CableState.Fresh || _model.State == CableState.Loose)) { _model.Grab(); PublishState(); }
             else if (!held && _model.State == CableState.Held) { _model.Release(); PublishState(); }
 
-            if (_model.State == CableState.Plugged && _socketRef != null) { Pin(_socketRef); }
+            if (_model.State == CableState.Plugged && _socketRef != null) { TickSeat(); }
 
             _stretch = ComputeStretch();
+            if (_seat == Seat.Sliding || (_seat == Seat.Seated && Time.time - _seatedAt < CableTuning.Instance.SeatGraceSeconds)) { _stretch = 0f; }
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
             if (Time.time < _testYankUntil) { _stretch = Mathf.Max(_stretch, 0.25f); }
 #endif
@@ -300,11 +367,129 @@ namespace PowerCutCrew.Cables
             _socket.Value = _model.SocketId;
         }
 
-        private void Pin(PowerSocket socket)
+        /// <summary>Host: the released plug slides into the socket; only when it has arrived is it pinned and the rope's last joint moved to the socket.</summary>
+        private void TickSeat()
         {
-            _item.Body.isKinematic = true;
-            transform.SetPositionAndRotation(socket.PlugPoint.position, socket.PlugPoint.rotation);
+            CableTuning t = CableTuning.Instance;
+            if (_seat == Seat.Sliding)
+            {
+                Pose target = _socketRef.SeatedPose;
+                _slidePosition = Vector3.MoveTowards(_slidePosition, target.position, t.PlugSlideSpeed * Time.fixedDeltaTime);
+                _slideRotation = Quaternion.RotateTowards(_slideRotation, target.rotation, 720f * Time.fixedDeltaTime);
+                _item.Body.MovePosition(_slidePosition);
+                _item.Body.MoveRotation(_slideRotation);
+                if ((_slidePosition - target.position).sqrMagnitude < 1e-6f && Quaternion.Angle(_slideRotation, target.rotation) < 0.5f) { SeatPlug(); }
+            }
+            else if (_seat == Seat.Seated && !_settleReported)
+            {
+                float energy = RopeKineticEnergy();
+                if (energy < t.SettleEnergy)
+                {
+                    _settleReported = true;
+                    NetMetrics.Sample("ropeSettleSeconds", Time.time - _seatedAt);
+                }
+                else if (Time.time - _seatedAt > t.SettleWithinSeconds + 2f)
+                {
+                    _settleReported = true;
+                    NetMetrics.Count("ropeUnsettled");
+                    Debug.Log($"[Cable] outlet {Outlet} rope still moving {Time.time - _seatedAt:F1} s after plug-in (energy {energy:F3} J)");
+                }
+            }
         }
+
+        private void SeatPlug()
+        {
+            CableTuning t = CableTuning.Instance;
+            Pose target = _socketRef.SeatedPose;
+            _item.Body.position = target.position;
+            _item.Body.rotation = target.rotation;
+            transform.SetPositionAndRotation(target.position, target.rotation);
+            // the last rope joint goes from the segment to the socket's anchor point: nothing that moves is attached to the rope any more
+            int n = _bodies.Length - 1;
+            if (_joints[n] != null) { Destroy(_joints[n]); _joints[n] = null; }
+            float length = t.RestLength / t.SegmentCount;
+            _anchorJoint = _bodies[n - 1].gameObject.AddComponent<ConfigurableJoint>();
+            ConfigureJoint(_anchorJoint, _socketRef.AnchorBody, length, t, false);
+            _anchorJoint.anchor = new Vector3(0f, 0f, length * _lengthScale * 0.5f);
+            _anchorJoint.connectedAnchor = Vector3.zero;
+            // the anchor body is not rotated like the rope: its angular limits would whip the last segment into range
+            _anchorJoint.angularXMotion = _anchorJoint.angularYMotion = _anchorJoint.angularZMotion = ConfigurableJointMotion.Free;
+            _seat = Seat.Seated;
+            _seatedAt = Time.time;
+            _settleReported = false;
+        }
+
+        /// <summary>Host: undo everything plugging did to the rope (joint, collisions, extra length).</summary>
+        private void LeaveSocket()
+        {
+            CableTuning t = CableTuning.Instance;
+            int n = _bodies.Length - 1;
+            if (_anchorJoint != null) { Destroy(_anchorJoint); _anchorJoint = null; }
+            if (_seat == Seat.Seated && _joints[n] == null && _rbs != null)
+            {
+                _joints[n] = _bodies[n].gameObject.AddComponent<ConfigurableJoint>();
+                ConfigureJoint(_joints[n], _rbs[n - 1], t.RestLength / t.SegmentCount, t, true);
+            }
+            _seat = Seat.None;
+            foreach ((Collider rope, Collider other) in _socketIgnores)
+            {
+                if (rope != null && other != null) { Physics.IgnoreCollision(rope, other, false); }
+            }
+            _socketIgnores.Clear();
+            SetLengthScale(1f);
+        }
+
+        /// <summary>The rope gets a little longer when the socket is nearly as far away as the rope is long, so it sags instead of hanging tight.</summary>
+        private void SetLengthScale(float scale)
+        {
+            CableTuning t = CableTuning.Instance;
+            _lengthScale = scale;
+            _restLength = t.RestLength * scale;
+            float length = t.RestLength / t.SegmentCount * scale;
+            int n = _bodies.Length - 1;
+            for (int i = 1; i <= n; i++)
+            {
+                if (_joints[i] == null) { continue; }
+                if (i < n) { _joints[i].anchor = new Vector3(0f, 0f, -length * 0.5f); }
+                _joints[i].connectedAnchor = new Vector3(0f, 0f, length * 0.5f);
+            }
+            if (_anchorJoint != null) { _anchorJoint.anchor = new Vector3(0f, 0f, length * 0.5f); }
+        }
+
+        /// <summary>The plug, the rope and the socket's wall must not fight over the same space.</summary>
+        private void IgnoreAround(PowerSocket socket)
+        {
+            Vector3 point = socket.PlugPoint.position;
+            foreach (Collider other in Physics.OverlapSphere(point, 0.5f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                // only what the plug actually touches (the socket plate and the wall behind it): never the floor under it
+                if (Vector3.Distance(other.ClosestPoint(point), point) > 0.3f) { continue; }
+                if (other is CharacterController || other.GetComponentInParent<NetPlayer>() != null) { continue; }
+                bool ours = other.GetComponentInParent<NetworkObject>() == socket.NetworkObject;
+                if (!ours && other.attachedRigidbody != null) { continue; }   // walls and the socket only, not cans or other bodies
+                foreach (Collider rope in _colliders)
+                {
+                    if (rope == null || rope == other) { continue; }
+                    Physics.IgnoreCollision(rope, other, true);
+                    _socketIgnores.Add((rope, other));
+                }
+            }
+        }
+
+        /// <summary>Host: total kinetic energy of the free rope segments (J). The settle check watches this after plug-in.</summary>
+        public float RopeKineticEnergy()
+        {
+            float energy = 0f;
+            if (_rbs == null) { return energy; }
+            for (int i = 1; i < _rbs.Length - 1; i++)
+            {
+                if (_rbs[i] != null && !_rbs[i].isKinematic) { energy += 0.5f * _rbs[i].mass * _rbs[i].linearVelocity.sqrMagnitude; }
+            }
+            return energy;
+        }
+
+        /// <summary>Host: true once the plug is pinned in its socket.</summary>
+        public bool PlugSeated => _seat == Seat.Seated;
 
         public bool HostPlugIn(PowerSocket socket)
         {
@@ -312,10 +497,19 @@ namespace PowerCutCrew.Cables
             if (_model == null || _model.State != CableState.Held || socket.Occupied) { return false; }
             if (!gen.Grid.Connect(Outlet, socket.Id)) { return false; }
             _item.HostForceRelease();
+            _item.Body.isKinematic = true;
             _model.PlugIn(socket.Id);
             _socketRef = socket;
             socket.HostSetOccupied(true, this);
-            Pin(socket);
+
+            CableTuning t = CableTuning.Instance;
+            float straight = Vector3.Distance(gen.Outlets[Outlet].position, socket.AnchorPoint);
+            SetLengthScale(Mathf.Clamp(straight * (1f + t.SlackFraction) / t.RestLength, 1f, t.MaxSlackScale));
+            IgnoreAround(socket);
+            _seat = Seat.Sliding;
+            _slidePosition = _item.Body.position;
+            _slideRotation = _item.Body.rotation;
+
             PublishState();
             NetMetrics.Count("plugIns");
             Debug.Log($"[Cable] outlet {Outlet} plugged into socket {socket.Id}");
@@ -341,6 +535,7 @@ namespace PowerCutCrew.Cables
             GeneratorNet gen = GeneratorNet.Instance;
             if (gen != null) { gen.Grid.Disconnect(Outlet); }
             if (_socketRef != null) { _socketRef.HostSetOccupied(false, null); }
+            LeaveSocket();
             _socketRef = null;
         }
 
@@ -351,7 +546,7 @@ namespace PowerCutCrew.Cables
             _item.Body.AddForce((Vector3.up + UnityEngine.Random.insideUnitSphere * 0.3f) * 3f, ForceMode.VelocityChange);
             PublishState();
             NetMetrics.Count("popOuts");
-            Debug.Log($"[Cable] outlet {Outlet} popped out of its socket (stretch {_stretch:P0})");
+            Debug.Log($"[Cable] outlet {Outlet} popped out of its socket (stretch {_stretch:P0}, {WorstGap()}, restLength {_restLength:F2} m)");
         }
 
         private void HostOnSnapped()
@@ -371,7 +566,7 @@ namespace PowerCutCrew.Cables
             _snapIndex.Value = worst;
             PublishState();
             NetMetrics.Count("snaps");
-            Debug.Log($"[Cable] outlet {Outlet} SNAPPED at joint {worst} (stretch {_stretch:P0})");
+            Debug.Log($"[Cable] outlet {Outlet} SNAPPED at joint {worst} (stretch {_stretch:P0}, {WorstGap()})");
         }
 
         // ---------- clients (and host display): orientation, hand rope ----------
@@ -388,26 +583,71 @@ namespace PowerCutCrew.Cables
                     Vector3 d = (i == snap - 1 && i > 0) ? _bodies[i].position - _bodies[i - 1].position : _bodies[i + 1].position - _bodies[i].position;
                     if (d.sqrMagnitude > 1e-6f) { _bodies[i].rotation = Quaternion.LookRotation(d); }
                 }
-                if (State == CableState.Plugged && PowerSocket.ById(_socket.Value) is PowerSocket s) { transform.rotation = s.PlugPoint.rotation; }
+                if (State == CableState.Plugged && PowerSocket.ById(_socket.Value) is PowerSocket s) { transform.rotation = s.SeatedPose.rotation; }
                 else
                 {
                     Vector3 d = _bodies[n].position - _bodies[n - 1].position;
                     if (d.sqrMagnitude > 1e-6f) { transform.rotation = Quaternion.LookRotation(d); }
                 }
             }
-            UpdateHandRope();
+            RebuildTube();
         }
 
-        /// <summary>The holder's plug copy is in their hand; a short visual rope joins it to the networked rope.</summary>
-        private void UpdateHandRope()
+        /// <summary>
+        /// One continuous tube: a Catmull-Rom spline through the rope points, from exactly the generator outlet to exactly the back of the plug
+        /// (or of the holder's local copy while it is in their hand). A snapped cable is two tubes. Same code on the host and on clients.
+        /// </summary>
+        private void RebuildTube()
         {
-            bool active = !IsServer && _item.HeldByLocalClient && _item.HeldCopy != null && _stream.HasData;
-            _handRope.enabled = active;
-            int n = _segmentRenderers.Length;
-            for (int i = n - 3; i < n; i++) { _segmentRenderers[i].enabled = !active; }
-            if (!active) { return; }
-            _handRope.SetPosition(0, _item.HeldCopy.transform.position);
-            _handRope.SetPosition(1, _bodies[n - 3].position);
+            if (_tube == null || _bodies == null) { return; }
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            CableTuning t = CableTuning.Instance;
+            int n = _bodies.Length - 1;
+            GeneratorNet gen = GeneratorNet.Instance;
+            Vector3 start = gen != null && gen.Outlets != null && Outlet >= 0 && Outlet < gen.Outlets.Length ? gen.Outlets[Outlet].position : _bodies[0].position;
+
+            bool inHand = !IsServer && _item.HeldByLocalClient && _item.HeldCopy != null && _stream.HasData;
+            Vector3 end;
+            int lastBody = n - 1;
+            if (inHand)
+            {
+                Transform copy = _item.HeldCopy.transform;
+                end = copy.position - copy.forward * t.PlugBackOffset;
+                lastBody = n - 4;          // the networked plug lags behind the hand: the cable ends at the hand's copy instead
+            }
+            else
+            {
+                end = transform.position - transform.forward * t.PlugBackOffset;
+            }
+
+            _tube.Clear();
+            int snap = State == CableState.Snapped ? Mathf.Clamp(_snapIndex.Value, 1, n) : -1;
+            _points.Clear();
+            _points.Add(start);
+            if (snap < 0)
+            {
+                for (int i = 1; i <= lastBody; i++) { _points.Add(_bodies[i].position); }
+                _points.Add(end);
+                AddPiece(_points, t);
+            }
+            else
+            {
+                for (int i = 1; i < snap; i++) { _points.Add(_bodies[i].position); }
+                AddPiece(_points, t);
+                _pieceB.Clear();
+                for (int i = snap; i < n; i++) { _pieceB.Add(_bodies[i].position); }
+                _pieceB.Add(end);
+                AddPiece(_pieceB, t);
+            }
+            _tube.Apply(_mesh);
+            NetMetrics.Sample("cableMeshMs", timer.Elapsed.TotalMilliseconds);
+        }
+
+        private void AddPiece(List<Vector3> points, CableTuning t)
+        {
+            if (points.Count < 2) { return; }
+            CableSpline.Sample(points, t.SplineSubdivisions, _samples);
+            _tube.AddTube(_samples);
         }
     }
 }

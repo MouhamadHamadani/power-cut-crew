@@ -31,6 +31,17 @@ namespace PowerCutCrew.Cables
         public bool Occupied => _occupied.Value;
         public Transform PlugPoint => _plugPoint;
 
+        private Rigidbody _anchorBody;
+
+        /// <summary>Where a seated plug sits: its tip points into the wall, its back (where the cable is attached) faces out.</summary>
+        public Pose SeatedPose => new Pose(_plugPoint.position, Quaternion.LookRotation(-_plugPoint.forward, _plugPoint.up));
+
+        /// <summary>Host: a kinematic body at the seated plug's back; the rope's last joint attaches to it once the plug has slid in.</summary>
+        public Rigidbody AnchorBody => _anchorBody;
+
+        /// <summary>World position of the rope's attachment point on a seated plug.</summary>
+        public Vector3 AnchorPoint => _plugPoint.position + _plugPoint.forward * CableTuning.Instance.PlugBackOffset;
+
         /// <summary>Host: the cable plugged in right now.</summary>
         public CableNet PluggedCable => _cable;
 
@@ -54,6 +65,14 @@ namespace PowerCutCrew.Cables
         public override void OnNetworkSpawn()
         {
             _all.Add(this);
+            if (IsServer && _anchorBody == null)
+            {
+                var anchor = new GameObject("CableAnchor");
+                anchor.transform.SetParent(transform, true);
+                anchor.transform.position = AnchorPoint;
+                _anchorBody = anchor.AddComponent<Rigidbody>();
+                _anchorBody.isKinematic = true;
+            }
             _powered.OnValueChanged += (p, n) => ApplyLamp();
             ApplyLamp();
         }
