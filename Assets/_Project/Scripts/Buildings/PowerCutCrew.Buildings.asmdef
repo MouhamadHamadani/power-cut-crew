@@ -2,7 +2,19 @@
     "name": "PowerCutCrew.Buildings",
     "rootNamespace": "PowerCutCrew.Buildings",
     "references": [
-        "PowerCutCrew.Core"
+        "PowerCutCrew.Core",
+        "PowerCutCrew.Net",
+        "PowerCutCrew.Generator",
+        "PowerCutCrew.Cables",
+        "PowerCutCrew.Localization",
+        "Unity.Netcode.Runtime",
+        "Unity.Collections",
+        "Unity.Localization",
+        "Unity.ResourceManager",
+        "Unity.TextMeshPro",
+        "RTLTMPro",
+        "Unity.ugui",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

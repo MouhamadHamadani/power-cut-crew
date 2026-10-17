@@ -47,7 +47,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 581152268639868419}
   serializedVersion: 5
-  m_Mass: 1
+  m_Mass: 2
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -169,6 +169,8 @@ MonoBehaviour:
   _stride: 2
   _rateHz: 20
   _verifyTarget: 0
+  _adaptiveRate: 1
+  _deltaPositions: 1
 --- !u!114 &7902505465993395933
 MonoBehaviour:
   m_ObjectHideFlags: 0

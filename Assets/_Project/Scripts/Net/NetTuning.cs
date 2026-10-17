@@ -38,6 +38,9 @@ namespace PowerCutCrew.Net
         public float SnapshotExtentMeters = 32f;
         public float SnapshotHeartbeatSeconds = 1f;
         public float SnapshotMotionThresholdMeters = 0.0005f;
+        [Tooltip("Adaptive streams (cables): above this speed (m/s) of any sent point the stream runs at its full rate, below it at CableSlowRateHz, at rest not at all (the heartbeat stays).")]
+        public float CableFastSpeed = 0.5f;
+        public float CableSlowRateHz = 10f;
 
         [Header("Held items")]
         public float HeldBlendSeconds = 0.15f;

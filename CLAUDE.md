@@ -13,7 +13,7 @@ Design knowledge base: `docs/DESIGN.md`. Networking details and the two-PC Steam
   `unity command ...` (com.unity.pipeline) instead.
 - Run Unity from PowerShell with `Start-Process -Wait -PassThru` (a bare `&` returns before Unity finishes).
 - NGO's own tests are enabled (`testables`) for its integration helpers, so always pass `-testFilter PowerCutCrew` (without it PlayMode runs thousands of NGO tests and looks hung).
-- Net integration tests: `NetIntegrationTests` (host + 2 clients) and `CableSettleTests` (host only). In one process all network managers share one physics world, so client copies of bodies
+- Net integration tests: `NetIntegrationTests` (host + 2 clients; the shift tests loosen `CableTuning` pop-out / snap stretch, because client body copies stretch the host rope in one process) and `CableSettleTests` (host only). In one process all network managers share one physics world, so client copies of bodies
   disturb host physics: tests of physics settling must be host-only. Test players only supply poses (disable `PlayerController` and push colliders).
 
 ```powershell
@@ -42,10 +42,10 @@ assembly name. Every system references `PowerCutCrew.Core`; nothing references `
 | Core | PowerCutCrew.Core | shared types, `TuningConfig`, `Interactable` + arbiter, generated `PlayerControls` |
 | Generator | PowerCutCrew.Generator | `GeneratorModel` (pull cord, fuel burn, heat, overheat; plain C#), `PowerGrid`, `GeneratorNet`, panel, tank cap, pull cord |
 | Cables | PowerCutCrew.Cables | host-only physics rope generator→socket, `CableModel` (grab / plug / snap / pop-out / respawn timers), `PlugRules`, sockets, reels, core-loop world + bots + verify hooks |
-| Buildings | PowerCutCrew.Buildings | demand, subscription tier, happiness, payment |
+| Buildings | PowerCutCrew.Buildings | `BuildingModel` / `BuildingDirector` (plain C#: demand windows, subscription amps, spikes, happiness, Angry, payment), `BuildingNet` (NetworkVariables, marker, bubble; building i owns socket i) |
 | Fuel | PowerCutCrew.Fuel | `FuelContainer` (plain C#), jerrycans, fuel drum; spills and fire later |
 | Breakdowns | PowerCutCrew.Breakdowns | typed failures with physical fixes |
-| Shift | PowerCutCrew.Shift | timer and score |
+| Shift | PowerCutCrew.Shift | `ShiftModel` (Lobby, Countdown, Running, Summary; plain C#), `ShiftNet` (host-owned money, HUD, summary, "Another shift" resets the street), clipboard, bots, `ShiftVerify`, `ShiftShots` |
 | Economy | PowerCutCrew.Economy | upgrades between shifts |
 | Net | PowerCutCrew.Net | sessions, Steam lobbies, players, grabbable items, `SnapshotStream`, bots, metrics |
 | UI | PowerCutCrew.UI | menus, HUD, Bootstrap |
@@ -80,8 +80,8 @@ transport (`Steam`), Steamworks.NET. Host-authoritative P2P over Steam lobbies. 
 - **Many-body physics** (cable, chains) syncs through `SnapshotStream`, **not** per-object NetworkTransforms.
 - Connection approval is `ConnectionRules` (full, version mismatch). Steam is only initialised when Steam mode is used.
 - Launch args: `-host`, `-client <ip>`, `-steamhost`, `-steamclient <lobbyId>`, `-bot`, `-duration <s>`, `-netsim none|bad|awful`,
-  `-seed <n>`, `-role <name>`, `-verify` (late-join assertion), `-holdforever`, `-holdplug`, `-snapbias`, `-botlog`,
-  `-shotdir <dir> -shot playpanel|prompt|coreloop` (doc screenshots). F1 = debug overlay (dev builds).
+  `-seed <n>`, `-role <name>`, `-verify` (late-join assertion: core loop, shift state / time / money, every building's window, powered, happiness, Angry, bubble), `-autostart` (a bot starts the shift at the clipboard), `-shifts <n>`, `-shiftseconds <s>`, `-holdforever`, `-holdplug`, `-snapbias`, `-botlog`,
+  `-shotdir <dir> -shot playpanel|prompt|coreloop|shift` (doc screenshots). F1 = debug overlay (dev builds).
 - `steam_appid.txt` (480) is copied for development builds only; release builds must not ship it.
 
 ## Arabic / localization

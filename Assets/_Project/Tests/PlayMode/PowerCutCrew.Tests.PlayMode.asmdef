@@ -15,7 +15,9 @@
         "Unity.Netcode.Runtime.Tests",
         "PowerCutCrew.Fuel",
         "PowerCutCrew.Generator",
-        "PowerCutCrew.Cables"
+        "PowerCutCrew.Cables",
+        "PowerCutCrew.Buildings",
+        "PowerCutCrew.Shift"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

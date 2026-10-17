@@ -89,6 +89,71 @@ namespace PowerCutCrew.Tests.EditMode
         }
     }
 
+    public class CableSparseSplineTests
+    {
+        /// <summary>A rope laid in a gentle S-curve (and a tighter arc): every 2nd point is what a client receives.</summary>
+        private static Vector3 Curve(float arcLength, float radius)
+        {
+            float a = arcLength / radius;
+            return new Vector3(Mathf.Sin(a) * radius, 0.05f, (1f - Mathf.Cos(a)) * radius);
+        }
+
+        private static float DistanceToSegment(Vector3 p, Vector3 a, Vector3 b)
+        {
+            Vector3 ab = b - a;
+            float t = ab.sqrMagnitude < 1e-12f ? 0f : Mathf.Clamp01(Vector3.Dot(p - a, ab) / ab.sqrMagnitude);
+            return Vector3.Distance(p, a + ab * t);
+        }
+
+        private static float WorstDeviation(float radius, out Vector3 firstSample, out Vector3 first, out Vector3 lastSample, out Vector3 last)
+        {
+            const int segments = 30;
+            const float segment = 0.4f;
+            var all = new List<Vector3>();
+            for (int i = 0; i <= segments; i++) { all.Add(Curve(i * segment, radius)); }
+            var sent = new List<Vector3>();
+            for (int i = 0; i <= segments; i += 2) { sent.Add(all[i]); }
+            var samples = new List<Vector3>();
+            CableSpline.Sample(sent, 8, samples);
+            first = all[0];
+            last = all[segments];
+            firstSample = samples[0];
+            lastSample = samples[samples.Count - 1];
+            // the spline is between the received points: how far is it from the true rope at the points that were not sent?
+            float worst = 0f;
+            for (int i = 1; i < segments; i += 2)
+            {
+                float nearest = float.MaxValue;
+                for (int k = 0; k + 1 < samples.Count; k++) { nearest = Mathf.Min(nearest, DistanceToSegment(all[i], samples[k], samples[k + 1])); }   // to the curve, not just to its samples
+                worst = Mathf.Max(worst, nearest);
+            }
+            return worst;
+        }
+
+        [TestCase(6.0f)]
+        [TestCase(4.0f)]
+        [TestCase(3.0f)]
+        public void SplineThroughEverySecondPoint_MatchesTheEndsExactly_AndStaysWithin2cmOfARopeLaidInAGentleCurve(float radius)
+        {
+            float worst = WorstDeviation(radius, out Vector3 firstSample, out Vector3 first, out Vector3 lastSample, out Vector3 last);
+            Debug.Log($"[CableSpline] sparse (every 2nd of 31 points), curve radius {radius} m: worst deviation {worst * 100f:F2} cm");
+            Assert.AreEqual(first, firstSample);
+            Assert.AreEqual(last, lastSample);
+            Assert.Less(worst, 0.02f, "a spline through every second rope point must stay within 2 cm of the real rope");
+        }
+
+        [TestCase(2.0f)]
+        [TestCase(1.0f)]
+        [TestCase(0.6f)]
+        public void TightCurves_AreReportedNotAsserted(float radius)
+        {
+            float worst = WorstDeviation(radius, out Vector3 firstSample, out Vector3 first, out Vector3 lastSample, out Vector3 last);
+            Debug.Log($"[CableSpline] sparse (every 2nd of 31 points), TIGHT curve radius {radius} m: worst deviation {worst * 100f:F2} cm");
+            Assert.AreEqual(first, firstSample);
+            Assert.AreEqual(last, lastSample);
+        }
+    }
+
     public class CableTubeMeshTests
     {
         [Test]
@@ -156,6 +221,92 @@ namespace PowerCutCrew.Tests.EditMode
             Assert.AreEqual(tube.Vertices.Count, mesh.vertexCount);
             Assert.That(mesh.bounds.size.z, Is.EqualTo(2f).Within(0.01f));
             Object.DestroyImmediate(mesh);
+        }
+    }
+
+    public class CableRebuildAllocationTests
+    {
+        private static void Rebuild(List<Vector3> points, List<Vector3> samples, CableTubeMesh tube, Mesh mesh, float t)
+        {
+            // a rope that moves a little every frame, the same work CableNet.RebuildTube does
+            for (int i = 0; i < points.Count; i++) { points[i] = new Vector3(i * 0.4f, 0.05f + 0.02f * Mathf.Sin(t + i), 0.1f * Mathf.Cos(t + i * 0.3f)); }
+            tube.Clear();
+            CableSpline.Sample(points, 4, samples);
+            tube.AddTube(samples);
+            tube.Apply(mesh);
+        }
+
+        /// <summary>Bytes the whole editor allocated in the frame that just ended (Unity's own "GC Allocated In Frame" counter).</summary>
+        private static long AllocatedLastFrame(Unity.Profiling.ProfilerRecorder recorder) => recorder.LastValue;
+
+        [UnityEngine.TestTools.UnityTest]
+        public System.Collections.IEnumerator TheRebuildDoesNotAllocate_AndTheProbeCanSeeAllocations()
+        {
+            var points = new List<Vector3>(33);
+            for (int i = 0; i < 32; i++) { points.Add(Vector3.zero); }
+            var samples = new List<Vector3>(CableSpline.SampleCount(32, 4) + 2);
+            var tube = new CableTubeMesh(6, 0.025f, CableSpline.SampleCount(32, 4) + 2);
+            var mesh = new Mesh();
+            using (Unity.Profiling.ProfilerRecorder recorder = Unity.Profiling.ProfilerRecorder.StartNew(Unity.Profiling.ProfilerCategory.Memory, "GC Allocated In Frame"))
+            {
+                for (int i = 0; i < 5; i++) { Rebuild(points, samples, tube, mesh, i * 0.1f); yield return null; }   // warm up
+
+                long idle = 0;
+                for (int i = 0; i < 5; i++) { yield return null; idle = System.Math.Max(idle, AllocatedLastFrame(recorder)); }   // what an empty frame costs here
+
+                for (int i = 0; i < 200; i++) { Rebuild(points, samples, tube, mesh, 3f + i * 0.02f); }   // 200 rebuilds inside one frame
+                yield return null;
+                long rebuilds = AllocatedLastFrame(recorder);
+
+                var garbage = new List<int[]>();
+                for (int i = 0; i < 200; i++) { garbage.Add(new int[2048]); }   // control: 1.6 MB of real garbage in one frame
+                yield return null;
+                long control = AllocatedLastFrame(recorder);
+
+                Assert.Greater(control, 1000000, $"the profiler counter does not see allocations here (control frame {control} bytes)");
+                Assert.LessOrEqual(rebuilds, idle + 256, $"200 rebuilds allocated about {rebuilds - idle} bytes more than an idle frame (idle {idle}, with rebuilds {rebuilds})");
+                Assert.AreEqual(200, garbage.Count);
+            }
+            Object.DestroyImmediate(mesh);
+        }
+
+        [Test]
+        public void ARebuildIsWellUnderAMillisecond()
+        {
+            var points = new List<Vector3>(33);
+            for (int i = 0; i < 32; i++) { points.Add(Vector3.zero); }
+            var samples = new List<Vector3>(CableSpline.SampleCount(32, 4) + 2);
+            var tube = new CableTubeMesh(6, 0.025f, CableSpline.SampleCount(32, 4) + 2);
+            var mesh = new Mesh();
+            for (int i = 0; i < 50; i++) { Rebuild(points, samples, tube, mesh, i * 0.1f); }
+            var timer = new System.Diagnostics.Stopwatch();
+            double worst = 0.0, sum = 0.0;
+            const int runs = 500;
+            for (int i = 0; i < runs; i++)
+            {
+                timer.Restart();
+                Rebuild(points, samples, tube, mesh, i * 0.05f);
+                double ms = timer.Elapsed.TotalMilliseconds;
+                sum += ms;
+                worst = System.Math.Max(worst, ms);
+            }
+            Debug.Log($"[CableTube] {runs} rebuilds of a 32-point cable: average {sum / runs:F3} ms, worst {worst:F3} ms");
+            Assert.Less(sum / runs, 0.5, "the average rebuild should be far below a millisecond");
+            Object.DestroyImmediate(mesh);
+        }
+
+        [Test]
+        public void TheArraysAreSizedForTheLongestCable_SoTheyNeverGrowInPlay()
+        {
+            int samples = CableSpline.SampleCount(33, 4);
+            var tube = new CableTubeMesh(6, 0.025f, samples + 2);
+            int vertexCapacity = tube.VertexCapacity;
+            int indexCapacity = tube.IndexCapacity;
+            var line = new List<Vector3>();
+            for (int i = 0; i < samples; i++) { line.Add(new Vector3(i * 0.1f, 0f, 0f)); }
+            tube.AddTube(line);
+            Assert.AreEqual(vertexCapacity, tube.VertexCapacity);
+            Assert.AreEqual(indexCapacity, tube.IndexCapacity);
         }
     }
 

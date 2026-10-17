@@ -64,6 +64,15 @@ namespace PowerCutCrew.Generator
             Publish(true);
         }
 
+        /// <summary>Host: back to the scene defaults (off, start fuel, cold, nothing plugged in) for the next shift.</summary>
+        public void HostReset()
+        {
+            GeneratorTuning t = GeneratorTuning.Instance;
+            _model = new GeneratorModel(t.ToSettings(), t.StartFuel);
+            Grid.DisconnectAll();
+            Publish(true);
+        }
+
         public Vector3 OutletPosition(int outlet) => _outlets[outlet].position;
 
         // ---------- host actions ----------

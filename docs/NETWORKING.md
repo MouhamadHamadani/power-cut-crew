@@ -1,4 +1,4 @@
-# Networking
+﻿# Networking
 
 Netcode for GameObjects 2.13.3. Host-authoritative peer-to-peer: one player hosts, up to 3 friends join. Local play uses
 Unity Transport (UDP); online play uses Steam (SteamNetworkingSockets relay, no port forwarding). Reference material from the
@@ -8,20 +8,20 @@ transport spike: branches `spike/ngo` and `spike/fishnet`, `docs/spikes/networki
 
 ```
 Bootstrap scene
-  └─ creates NetworkSession prefab (DontDestroyOnLoad)
+  â””â”€ creates NetworkSession prefab (DontDestroyOnLoad)
         NetworkManager + MeteredUnityTransport (Local) + SteamNetworkingSocketsTransport (Steam) + NetSession
-MainMenu ── Play ── Host (Local) / Join (IP) / Host (Steam)
-                          │
-NetSession.StartHost(mode)│            NetSession.StartClient(mode, address|lobbyId)
-   Steam: SteamLobbyService.Init → CreateLobby (friends-only, 4, game+version data) ──────────────┐
-   NetworkManager.StartHost → host loads Street_Greybox (NGO scene sync, clients follow)          │
-   host spawns: players (slot 0..3 at spawn points), 10 cans, the chain, generator, fuel drum,      │
-                4 sockets, one cable per generator outlet (core loop: CoreLoopWorld)               │
-Clients: approval (ConnectionRules: full / version) → scene sync → host spawns their player ◄──────┘
+MainMenu â”€â”€ Play â”€â”€ Host (Local) / Join (IP) / Host (Steam)
+                          â”‚
+NetSession.StartHost(mode)â”‚            NetSession.StartClient(mode, address|lobbyId)
+   Steam: SteamLobbyService.Init â†’ CreateLobby (friends-only, 4, game+version data) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+   NetworkManager.StartHost â†’ host loads Street_Greybox (NGO scene sync, clients follow)          â”‚
+   host spawns: players (slot 0..3 at spawn points), 10 cans, the chain, generator, fuel drum,      â”‚
+                4 sockets, one cable per generator outlet (core loop: CoreLoopWorld)               â”‚
+Clients: approval (ConnectionRules: full / version) â†’ scene sync â†’ host spawns their player â—„â”€â”€â”€â”€â”€â”€â”˜
 
 HOST (authority)                                   CLIENT
  physics for cans, chain                            owner-authoritative movement (own player)
- grab arbitration (InteractionArbiter)              raycast → localized prompt → request RPC
+ grab arbitration (InteractionArbiter)              raycast â†’ localized prompt â†’ request RPC
  HoldPoint follow of held items                     held item: local copy in the hand
  SnapshotStream sender (20 Hz, only when moving)    SnapshotStream receiver: buffer + interpolate
  GeneratorModel / PowerGrid / CableModel / FuelContainer   generator panel, lamps, hand rope: read NetworkVariables
@@ -32,24 +32,24 @@ HOST (authority)                                   CLIENT
 
 | Message | Direction | Delivery | Purpose |
 |---|---|---|---|
-| connection approval payload | client → host | reliable | build version (UTF-8); host answers approve or a reason key |
-| `NetPlayer.InteractRpc(ref, index, handPos, handRot)` | owner → host | reliable | interact request: which `Interactable` of the object, plus the hand pose (used for plug-in) |
-| `NetPlayer.HoldRpc(ref, index, phase, handPos, handRot)` | owner → host | reliable | hold-E interactions (pour, fill): begin, keep-alive every 0.2 s, end. The host ends the hold 0.5 s after the last keep-alive |
-| `NetPlayer.ReleaseRpc(handPos, handRot, velocity, isThrow)` | owner → host | reliable | drop / throw carrying the holder's hand pose and the velocity; the host trusts the pose within `NetTuning.ReleasePoseTolerance` (2.5 m) and teleports the item to it before releasing. Plug-in uses the same pose rule |
-| `NetPlayer.VerifyExtrasRpc(...)` | owner → host | reliable | `-verify` bot runs only: per-stream snapshot check (2 cm) and the core-loop report (generator, cans, cables) |
-| `NetPlayer.VerifyRpc(...)` | owner → host | reliable | `-verify` bot runs only: late-join assertion |
-| `GeneratorNet.SputterRpc(result)` | host → all | reliable | cosmetic: smoke and shake on a failed pull |
-| NetworkVariables `GeneratorNet`: state (byte, at once), fuel (0.5 steps), heat (1 steps), load (0.1 A steps) | host → all | reliable | fuel / heat / load only when the quantised value changed and at most 4 Hz |
-| NetworkVariables `FuelCan`: fuel | host → all | reliable | can fill level (visual fill) |
-| NetworkVariables `CableNet`: state, socket, outlet, snap index | host → all | reliable | cable state machine; the rope shape itself travels as a snapshot stream |
-| NetworkVariables `PowerSocket`: id, powered, occupied | host → all | reliable | lamp state; changes only when the powered state changes (no flicker) |
-| `pcc.snap` (per cable) | host → clients | unreliable-sequenced | rope: 31 bodies, stride 2 (16 sent, the rest interpolated), positions only, 20 Hz, only while a body moves; heartbeat when still |
-| NetworkVariables: player slot, name (owner-write), item holder / holder version / index | host → all | reliable | state |
+| connection approval payload | client â†’ host | reliable | build version (UTF-8); host answers approve or a reason key |
+| `NetPlayer.InteractRpc(ref, index, handPos, handRot)` | owner â†’ host | reliable | interact request: which `Interactable` of the object, plus the hand pose (used for plug-in) |
+| `NetPlayer.HoldRpc(ref, index, phase, handPos, handRot)` | owner â†’ host | reliable | hold-E interactions (pour, fill): begin, keep-alive every 0.2 s, end. The host ends the hold 0.5 s after the last keep-alive |
+| `NetPlayer.ReleaseRpc(handPos, handRot, velocity, isThrow)` | owner â†’ host | reliable | drop / throw carrying the holder's hand pose and the velocity; the host trusts the pose within `NetTuning.ReleasePoseTolerance` (2.5 m) and teleports the item to it before releasing. Plug-in uses the same pose rule |
+| `NetPlayer.VerifyExtrasRpc(...)` | owner â†’ host | reliable | `-verify` bot runs only: per-stream snapshot check (2 cm) and the core-loop report (generator, cans, cables) |
+| `NetPlayer.VerifyRpc(...)` | owner â†’ host | reliable | `-verify` bot runs only: late-join assertion |
+| `GeneratorNet.SputterRpc(result)` | host â†’ all | reliable | cosmetic: smoke and shake on a failed pull |
+| NetworkVariables `GeneratorNet`: state (byte, at once), fuel (0.5 steps), heat (1 steps), load (0.1 A steps) | host â†’ all | reliable | fuel / heat / load only when the quantised value changed and at most 4 Hz |
+| NetworkVariables `FuelCan`: fuel | host â†’ all | reliable | can fill level (visual fill) |
+| NetworkVariables `CableNet`: state, socket, outlet, snap index | host â†’ all | reliable | cable state machine; the rope shape itself travels as a snapshot stream |
+| NetworkVariables `PowerSocket`: id, powered, occupied | host â†’ all | reliable | lamp state; changes only when the powered state changes (no flicker) |
+| `pcc.snap` (per cable) | host â†’ clients | unreliable-sequenced | rope: 31 bodies, stride 2 (16 sent, the rest interpolated), positions only, 20 Hz, only while a body moves; heartbeat when still |
+| NetworkVariables: player slot, name (owner-write), item holder / holder version / index | host â†’ all | reliable | state |
 | NetworkTransform: players (owner authority), items (host authority) | see left | NGO | transforms, unreliable deltas |
-| `pcc.snap` named message | host → clients | unreliable-sequenced | `SnapshotStream` snapshot (positions 3 x uint16, rotations 4 bytes) |
-| `pcc.snap` (full) | host → one client | reliable-sequenced | full snapshot for a late joiner (requested by `RequestFullSnapshotRpc`) |
+| `pcc.snap` named message | host â†’ clients | unreliable-sequenced | `SnapshotStream` snapshot (positions 3 x uint16, rotations 4 bytes) |
+| `pcc.snap` (full) | host â†’ one client | reliable-sequenced | full snapshot for a late joiner (requested by `RequestFullSnapshotRpc`) |
 
-Rules of thumb: requests go client → host, state goes host → clients; never trust a client position for anything but its own movement.
+Rules of thumb: requests go client â†’ host, state goes host â†’ clients; never trust a client position for anything but its own movement.
 
 ## Tuning assets (`Assets/_Project/Config/Resources/`)
 
@@ -184,3 +184,25 @@ nothing in the rope sync changed); client download 43 kbps average, 93 kbps peak
 Frame time with both cables moving: host 18.2 ms, clients 17.8 ms average (headless 480 x 270, so GPU cost is not in it; before the fix 17.3 to 17.5 ms on the host); the tube rebuild
 costs 0.175 ms per cable per frame on average (0.35 ms for both, worst single frame 4.5 ms).
 
+
+## Prompt 05: buildings and shift
+
+- **Authority.** The host runs `ShiftModel` and the `BuildingDirector` (every building's `BuildingModel`) and owns the money. `ShiftNet` publishes state and countdown at once, time left at 4 Hz, money whenever
+  its whole value changes. `BuildingNet` publishes window, Spiking and Angry at once, happiness quantised at most 4 Hz, and the current bubble (id, trigger, line, start time) so a late joiner sees what is on screen.
+  Building i owns socket i; a building is powered when its socket is (`PowerSocket.ById` prefers the host's instance and is looked up on every call, a cached copy went stale in tests).
+- **Late join and `-verify`.** `NetVerifyExtras.Add` takes several hooks. Besides the Prompt 04 checks the joiner reports shift state, time left, money and, per building, window, powered, happiness, Angry and bubble;
+  the host compares once its own discrete state has been quiet for 2 s (time left within 1.5 s, happiness within 12, money within 12 behind and never ahead).
+- **Bots.** `ShiftBot` walks to the clipboard and presses it (`-autostart`; it aims at the clipboard itself, an aim point 0.9 m too high never gave it focus), sends the core-loop bot to the building that is
+  Requesting in the dark and, between shifts, presses "Another shift" (`-shifts n`).
+
+### Verification results (development build, `-netsim bad`, headless bots, 3-minute shifts)
+
+| Run | Result |
+|---|---|
+| C1 (host + 3 bots, 180 s) | host upload **124.6 kbps average, 237.4 kbps peak** (Prompt 04: 174 / 359, before the adaptive cable / chain snapshot rate and delta positions). 0 errors, 0 exceptions, `-verify` 24 / 24 |
+| S1 (host + 3 bots, full shift) | 0 errors, 0 exceptions. Host upload 112.8 kbps average, 260.2 kbps peak. Uptime **17.1 %** (the target is 20 to 95 %), money 0, 4 Angry, 2 spikes, 1 overheat. Further shifts in S3 / S2: uptime 21 to 49 %, money 0 to 16. The bots pay almost nothing: plugs pop out and cables snap all the time (19 to 61 % stretch) and `RatePerAmpPerMinute` is 1, so the tuning is off in the sense that it pays next to nothing, and uptime sits at the bottom of the range. Not tuned yet |
+| S2 (host + 2 bots, joiner at 90 s) | 0 errors. Joiner: 9 full comparisons OK, 7 skipped because the host had just changed, 0 mismatches (time left, money, every building) |
+| S3 (host + 3 bots, 2 shifts) | 0 errors. After "Another shift": money 0, held items 0, bubbles 0; the second shift starts with happiness 70 on all four buildings (the bots pick up cans again within seconds, so held items at the start are not leftovers) |
+| S4 (host killed at 100 s) | all clients log "host left" and load `MainMenu` with `net.error.host_left`. 0 errors |
+
+Screenshots: `docs/screenshots/shift_hud_{en,ar}.png`, `shift_summary_{en,ar}.png`, `building_bubble_{en,ar}.png` (`-shot shift -shotdir docs/screenshots` on a bot client with graphics). Markers and bubbles had been drawn about 100 times too large (the per-frame distance scale replaced the canvas scale of 0.01 instead of multiplying it); fixed in `BuildingMarker` / `BuildingBubble`.

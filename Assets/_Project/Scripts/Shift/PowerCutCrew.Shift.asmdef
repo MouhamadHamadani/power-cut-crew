@@ -2,7 +2,21 @@
     "name": "PowerCutCrew.Shift",
     "rootNamespace": "PowerCutCrew.Shift",
     "references": [
-        "PowerCutCrew.Core"
+        "PowerCutCrew.Core",
+        "PowerCutCrew.Net",
+        "PowerCutCrew.Generator",
+        "PowerCutCrew.Cables",
+        "PowerCutCrew.Localization",
+        "Unity.Netcode.Runtime",
+        "Unity.Collections",
+        "Unity.Localization",
+        "Unity.ResourceManager",
+        "Unity.TextMeshPro",
+        "RTLTMPro",
+        "PowerCutCrew.Buildings",
+        "PowerCutCrew.Fuel",
+        "Unity.ugui",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
