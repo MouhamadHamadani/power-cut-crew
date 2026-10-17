@@ -184,3 +184,25 @@ nothing in the rope sync changed); client download 43 kbps average, 93 kbps peak
 Frame time with both cables moving: host 18.2 ms, clients 17.8 ms average (headless 480 x 270, so GPU cost is not in it; before the fix 17.3 to 17.5 ms on the host); the tube rebuild
 costs 0.175 ms per cable per frame on average (0.35 ms for both, worst single frame 4.5 ms).
 
+
+## Prompt 05: buildings and shift
+
+- **Authority.** The host runs `ShiftModel` and the `BuildingDirector` (every building's `BuildingModel`) and owns the money. `ShiftNet` publishes state and countdown at once, time left at 4 Hz, money whenever
+  its whole value changes. `BuildingNet` publishes window, Spiking and Angry at once, happiness quantised at most 4 Hz, and the current bubble (id, trigger, line, start time) so a late joiner sees what is on screen.
+  Building i owns socket i; a building is powered when its socket is (`PowerSocket.ById` prefers the host's instance and is looked up on every call, a cached copy went stale in tests).
+- **Late join and `-verify`.** `NetVerifyExtras.Add` takes several hooks. Besides the Prompt 04 checks the joiner reports shift state, time left, money and, per building, window, powered, happiness, Angry and bubble;
+  the host compares once its own discrete state has been quiet for 2 s (time left within 1.5 s, happiness within 12, money within 12 behind and never ahead).
+- **Bots.** `ShiftBot` walks to the clipboard and presses it (`-autostart`; it aims at the clipboard itself, an aim point 0.9 m too high never gave it focus), sends the core-loop bot to the building that is
+  Requesting in the dark and, between shifts, presses "Another shift" (`-shifts n`).
+
+### Verification results (development build, `-netsim bad`, headless bots, 3-minute shifts)
+
+| Run | Result |
+|---|---|
+| C1 (host + 3 bots, 180 s) | host upload **124.6 kbps average, 237.4 kbps peak** (Prompt 04: 174 / 359, before the adaptive cable / chain snapshot rate and delta positions). 0 errors, 0 exceptions, `-verify` 24 / 24 |
+| S1 (host + 3 bots, full shift) | 0 errors, 0 exceptions. Host upload 112.8 kbps average, 260.2 kbps peak. Uptime **17.1 %** (the target is 20 to 95 %), money 0, 4 Angry, 2 spikes, 1 overheat. Further shifts in S3 / S2: uptime 21 to 49 %, money 0 to 16. The bots pay almost nothing: plugs pop out and cables snap all the time (19 to 61 % stretch) and `RatePerAmpPerMinute` is 1, so the tuning is off in the sense that it pays next to nothing, and uptime sits at the bottom of the range. Not tuned yet |
+| S2 (host + 2 bots, joiner at 90 s) | 0 errors. Joiner: 9 full comparisons OK, 7 skipped because the host had just changed, 0 mismatches (time left, money, every building) |
+| S3 (host + 3 bots, 2 shifts) | 0 errors. After "Another shift": money 0, held items 0, bubbles 0; the second shift starts with happiness 70 on all four buildings (the bots pick up cans again within seconds, so held items at the start are not leftovers) |
+| S4 (host killed at 100 s) | all clients log "host left" and load `MainMenu` with `net.error.host_left`. 0 errors |
+
+Screenshots: `docs/screenshots/shift_hud_{en,ar}.png`, `shift_summary_{en,ar}.png` (`-shot shift -shotdir docs/screenshots` on a bot client with graphics). The building / speech bubble shot is not done yet.
