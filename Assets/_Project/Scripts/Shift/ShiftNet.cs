@@ -131,7 +131,10 @@ namespace PowerCutCrew.Shift
             _summary.Value = default;
             _timeLeft.Value = _model.TimeLeft;
             NetMetrics.Count("shiftResets");
-            Debug.Log("[Shift] back in the lobby (street reset)");
+            int heldAfter = 0, bubblesAfter = 0;
+            foreach (NetworkPhysicsItem item in NetworkPhysicsItem.All) { if (item != null && item.IsHeld) { heldAfter++; } }
+            foreach (BuildingNet b in BuildingNet.All) { if (b != null && b.IsSpawned && b.Model != null && b.HasBubble) { bubblesAfter++; } }
+            Debug.Log($"[Shift] back in the lobby (street reset): money {_money.Value}, held items {heldAfter}, bubbles {bubblesAfter}");
             PublishState(true);
         }
 
@@ -160,6 +163,19 @@ namespace PowerCutCrew.Shift
             _baseOverheats = NetMetrics.GetCount("overheats");
             _baseSnaps = NetMetrics.GetCount("snaps");
             _baseFailedPulls = NetMetrics.GetCount("pullsFail");
+            int bubbles = 0, held = 0;
+            var happy = new System.Text.StringBuilder();
+            foreach (BuildingNet b in BuildingNet.All)
+            {
+                if (b == null || !b.IsSpawned) { continue; }
+                if (b.HasBubble) { bubbles++; }
+                happy.Append(b.Happiness.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)).Append(' ');
+            }
+            foreach (NetworkPhysicsItem item in NetworkPhysicsItem.All)
+            {
+                if (item != null && item.IsHeld) { held++; }
+            }
+            Debug.Log($"[Shift] start state: money {_money.Value}, happiness {happy}, bubbles {bubbles}, held items {held}");
             Debug.Log($"[Shift] the power cut begins ({_model.Duration:F0} s, {_director.Buildings.Count} buildings)");
         }
 

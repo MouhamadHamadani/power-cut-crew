@@ -19,6 +19,7 @@ namespace PowerCutCrew.Shift
         private int _summariesSeen;
         private ShiftState _lastState = (ShiftState)255;
         private float _summaryAt;
+        private float _nextLog;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Register()
@@ -105,7 +106,12 @@ namespace PowerCutCrew.Shift
             if (clipboard == null) { return false; }
             Vector3 stand = clipboard.transform.position + (me.transform.position - clipboard.transform.position).normalized * 1.3f;
             stand.y = 0f;
-            if (BotBrain.Walk(me, stand, ref f, dt, 0.6f) && BotBrain.AimAt(me, clipboard.transform.position + Vector3.up * 0.9f, ref f, dt) < 6f)
+            if (Time.realtimeSinceStartup > _nextLog)
+            {
+                _nextLog = Time.realtimeSinceStartup + 3f;
+                Debug.Log($"[ShiftBot] to clipboard: {Vector3.Distance(me.transform.position, stand):F1} m from the stand point, focus {(InteractionFocus.Current != null ? InteractionFocus.Current.GetType().Name : "none")}");
+            }
+            if (BotBrain.Walk(me, stand, ref f, dt, 0.6f) && BotBrain.AimAt(me, clipboard.transform.position, ref f, dt) < 6f)
             {
                 if (InteractionFocus.Current is ShiftClipboard) { f.Interact = true; }
             }
