@@ -61,6 +61,9 @@ namespace PowerCutCrew.Cables
         private CableModel _model;
         private PowerSocket _socketRef;
         private float _stretch;
+        // diagnostics: why a cable came loose (see Cause)
+        private float _plugInAt, _lastHitAt = -100f, _nextTrace;
+        private string _lastHitName = "";
         private readonly bool _debug = LaunchArgs.Has("-botlog");
         private float _nextLog;
 
@@ -160,8 +163,16 @@ namespace PowerCutCrew.Cables
             }
         }
 
+        /// <summary>Players walk through cables: their kinematic push capsule would fling the light rope and pop the plug out of its socket.</summary>
+        private void IgnorePlayer(Collider push)
+        {
+            if (push == null || _colliders == null) { return; }
+            foreach (Collider rope in _colliders) { if (rope != null) { Physics.IgnoreCollision(rope, push); } }
+        }
+
         public override void OnNetworkDespawn()
         {
+            PlayerPushCollider.Added -= IgnorePlayer;
             All.Remove(this);
             if (_segmentRoot != null) { Destroy(_segmentRoot); }
         }
@@ -169,6 +180,7 @@ namespace PowerCutCrew.Cables
         public override void OnDestroy()
         {
             base.OnDestroy();
+            PlayerPushCollider.Added -= IgnorePlayer;
             if (_segmentRoot != null) { Destroy(_segmentRoot); }
             if (_mesh != null) { Destroy(_mesh); }
             if (_tubeMaterial != null) { Destroy(_tubeMaterial); }
@@ -218,6 +230,7 @@ namespace PowerCutCrew.Cables
                     var box = body.gameObject.AddComponent<BoxCollider>();
                     box.size = new Vector3(t.SegmentThickness, t.SegmentThickness, length * 0.95f);
                     box.sharedMaterial = RopeMaterial(t);
+                    body.gameObject.AddComponent<CableContact>().Owner = this;
                     colliders[i] = box;
                 }
                 else
@@ -233,6 +246,8 @@ namespace PowerCutCrew.Cables
                 ConfigureJoint(_joints[i], _rbs[i - 1], length, t, i == n);
             }
             _colliders = colliders;
+            foreach (Collider push in PlayerPushCollider.All) { IgnorePlayer(push); }
+            PlayerPushCollider.Added += IgnorePlayer;
             _restLength = t.RestLength;
             // segments must not collide with each other (or the plug)
             for (int i = 0; i <= n; i++)
@@ -345,6 +360,13 @@ namespace PowerCutCrew.Cables
             if (_model.State == CableState.Plugged && _socketRef != null) { TickSeat(); }
 
             _stretch = ComputeStretch();
+            if (_plugInAt > 0f && Time.time - _plugInAt < 4f && Time.time >= _nextTrace && LaunchArgs.Has("-cabletrace"))
+            {
+                _nextTrace = Time.time + 0.5f;
+                GeneratorNet g = GeneratorNet.Instance;
+                float straightNow = g != null ? Vector3.Distance(g.Outlets[Outlet].position, transform.position) : 0f;
+                Debug.Log($"[CableTrace] outlet {Outlet} t+{Time.time - _plugInAt:F1} s seat {_seat} raw stretch {_stretch:P0}, outlet to plug {straightNow:F2} m, rest {_restLength:F2} m, {WorstGap()}, rope energy {RopeKineticEnergy():F2} J");
+            }
             if (_seat == Seat.Sliding || (_seat == Seat.Seated && Time.time - _seatedAt < CableTuning.Instance.SeatGraceSeconds)) { _stretch = 0f; }
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
             if (Time.time < _testYankUntil) { _stretch = Mathf.Max(_stretch, 0.25f); }
@@ -510,6 +532,11 @@ namespace PowerCutCrew.Cables
 
             CableTuning t = CableTuning.Instance;
             float straight = Vector3.Distance(gen.Outlets[Outlet].position, socket.AnchorPoint);
+            float stretchAtPlugIn = ComputeStretch();
+            _plugInAt = Time.time;
+            NetMetrics.Sample("stretchAtPlugInPct", stretchAtPlugIn * 100f);
+            NetMetrics.Count(straight * (1f + t.SlackFraction) <= t.RestLength * t.MaxSlackScale ? "socketReachable" : "socketOutOfReach");
+            Debug.Log($"[Cable] outlet {Outlet} plug-in: socket {socket.Id} {straight:F1} m from the outlet (rope {t.RestLength:F1} m, {t.SlackFraction:P0} slack needs {straight * (1f + t.SlackFraction):F1} m, longest allowed {t.RestLength * t.MaxSlackScale:F1} m), rope stretch {stretchAtPlugIn:P0}");
             SetLengthScale(Mathf.Clamp(straight * (1f + t.SlackFraction) / t.RestLength, 1f, t.MaxSlackScale));
             IgnoreAround(socket);
             _seat = Seat.Sliding;
@@ -547,6 +574,12 @@ namespace PowerCutCrew.Cables
 
         private void ReleaseSocket()
         {
+            if (_plugInAt > 0f)
+            {
+                NetMetrics.Sample("plugSeconds", Time.time - _plugInAt);
+                Debug.Log($"[Cable] outlet {Outlet} stayed plugged {Time.time - _plugInAt:F1} s");
+                _plugInAt = 0f;
+            }
             GeneratorNet gen = GeneratorNet.Instance;
             if (gen != null) { gen.Grid.Disconnect(Outlet); }
             if (_socketRef != null) { _socketRef.HostSetOccupied(false, null); }
@@ -554,8 +587,58 @@ namespace PowerCutCrew.Cables
             _socketRef = null;
         }
 
+        /// <summary>Host: why the rope is over its limit right now (a log line and a metric per pop-out and snap).</summary>
+        private string Cause(bool snap, ulong holder)
+        {
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+            if (Time.time < _testYankUntil) { return "yanked_test_hook"; }
+#endif
+            if (Time.time - _lastHitAt < 1f) { return "hit_by_" + _lastHitName; }
+            foreach (NetPlayer p in NetPlayer.ByClient.Values)
+            {
+                if (p == null || p.OwnerClientId == holder) { continue; }   // the holder's own hand is next to the rope by definition
+                for (int i = 0; i < _bodies.Length; i += 2)
+                {
+                    if (Vector3.Distance(p.transform.position + Vector3.up * 0.5f, _bodies[i].position) < 0.8f) { return $"touched_by_player{p.OwnerClientId}"; }
+                }
+            }
+            if (snap)
+            {
+                GeneratorNet gen = GeneratorNet.Instance;
+                float reach = gen != null && gen.Outlets != null ? Vector3.Distance(gen.Outlets[Outlet].position, transform.position) : 0f;
+                return reach > _restLength ? $"holder{holder}_dragged_past_reach" : "rope_stretched_in_reach";
+            }
+            return "rope_stretched_alone";
+        }
+
+        private void NoteCause(string kind, string cause, string extra)
+        {
+            var key = new System.Text.StringBuilder();
+            foreach (char ch in cause) { if (!char.IsDigit(ch)) { key.Append(ch); } }   // "holder3_dragged..." counts as "holder_dragged..."
+            NetMetrics.Count(kind + "Cause_" + key);
+            Debug.Log($"[Cable] outlet {Outlet} {kind} cause: {cause} ({extra})");
+        }
+
+        /// <summary>Collisions of the plug and the rope segments with other bodies (cans, players) feed the cause of the next pop-out or snap.</summary>
+        public void NoteHit(Collision c)
+        {
+            if (!IsServer || c.impulse.sqrMagnitude < 0.25f) { return; }
+            Collider o = c.collider;
+            if (o == null || o.transform.IsChildOf(transform)) { return; }
+            NetPlayer who = o.GetComponentInParent<NetPlayer>();
+            if (who != null && _item.IsHeld && who.OwnerClientId == _item.HolderClientId) { return; }
+            bool dynamic = c.rigidbody != null || who != null;
+            if (!dynamic) { return; }
+            _lastHitAt = Time.time;
+            _lastHitName = o.transform.root.name.Replace("(Clone)", "").Replace(' ', '-');
+        }
+
+        private void OnCollisionEnter(Collision c) { NoteHit(c); }
+
         private void HostOnPoppedOut()
         {
+            string cause = Cause(false, 0);
+            NoteCause("popOut", cause, $"stretch {_stretch:P0}, plugged {Time.time - _plugInAt:F1} s");
             ReleaseSocket();
             _item.Body.isKinematic = false;
             _item.Body.AddForce((Vector3.up + UnityEngine.Random.insideUnitSphere * 0.3f) * 3f, ForceMode.VelocityChange);
@@ -566,6 +649,9 @@ namespace PowerCutCrew.Cables
 
         private void HostOnSnapped()
         {
+            ulong holder = _item.HolderClientId;
+            string cause = Cause(true, holder);
+            NoteCause("snap", cause, $"stretch {_stretch:P0}, holder client {holder}");
             // the joint under the most strain breaks: the one whose neighbours are furthest apart
             int worst = 1;
             float worstGap = 0f;
@@ -684,5 +770,12 @@ namespace PowerCutCrew.Cables
             CableSpline.Sample(points, subdivisions, _samples);
             _tube.AddTube(_samples);
         }
+    }
+
+    /// <summary>Forwards collisions of a rope segment to its cable (host diagnostics).</summary>
+    public class CableContact : MonoBehaviour
+    {
+        public CableNet Owner;
+        private void OnCollisionEnter(Collision c) { if (Owner != null) { Owner.NoteHit(c); } }
     }
 }
