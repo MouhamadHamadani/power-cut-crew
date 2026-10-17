@@ -32,6 +32,7 @@ namespace PowerCutCrew.Buildings
         private float _shownAmps = -1f;
         private string _shownName;
         private Camera _camera;
+        private float _baseScale;   // the canvas scale from the prefab (pixels to metres); the screen scale multiplies it
         private float _cameraSearch;
 
         public MarkerState State => _state;
@@ -83,11 +84,12 @@ namespace PowerCutCrew.Buildings
                 _camera = Camera.main;
                 _cameraSearch = Time.unscaledTime + 1f;
             }
-            if (_camera == null) { return; }
-            Vector3 toMarker = transform.position - _camera.transform.position;
+            Camera cam = BuildingBubble.CameraOverride != null ? BuildingBubble.CameraOverride : _camera;
+            if (cam == null) { return; }
+            Vector3 toMarker = transform.position - cam.transform.position;
             transform.rotation = Quaternion.LookRotation(toMarker, Vector3.up);   // faces the camera
             float distance = toMarker.magnitude;
-            transform.localScale = Vector3.one * Mathf.Clamp(distance * _screenScale, _minScale, _maxScale);
+            transform.localScale = Vector3.one * (_baseScale > 0f ? _baseScale : (_baseScale = transform.localScale.x)) * Mathf.Clamp(distance * _screenScale, _minScale, _maxScale);
         }
     }
 }

@@ -35,6 +35,7 @@ namespace PowerCutCrew.Shift
             _cam.depth = 50;
             _cam.fieldOfView = 50f;
             _cam.enabled = false;
+            BuildingBubble.CameraOverride = _cam;   // markers and bubbles are sized for the photo camera, not for the bot's eyes
 
             bool hud = false, bubble = false, summary = false;
             float runningSince = -1f;
@@ -61,7 +62,7 @@ namespace PowerCutCrew.Shift
                             Vector3 flat = new Vector3(b.transform.position.x, 0f, b.transform.position.z);
                             Vector3 toGen = flat.sqrMagnitude > 0.01f ? -flat.normalized : Vector3.back;
                             Vector3 at = flat + Vector3.up * 5.5f;   // the marker and the bubble float above the roof
-                            Place(flat + toGen * 15f + Vector3.up * 5f, at);
+                            Place(flat + toGen * 12f + Vector3.up * 5f, at);
                             _cam.enabled = true;
                             bubble = true;
                             yield return Both("building_bubble");

@@ -12,8 +12,12 @@ namespace PowerCutCrew.Buildings
         [SerializeField] private float _minScale = 0.5f;
         [SerializeField] private float _maxScale = 3f;
 
+        /// <summary>Doc screenshots: the camera the bubble faces and is sized for (null = the main camera).</summary>
+        public static Camera CameraOverride;
+
         private string _key;
         private Camera _camera;
+        private float _baseScale;   // the canvas scale from the prefab (pixels to metres); the screen scale multiplies it
         private float _cameraSearch;
 
         public bool Visible => _root != null && _root.activeSelf;
@@ -43,10 +47,11 @@ namespace PowerCutCrew.Buildings
                 _camera = Camera.main;
                 _cameraSearch = Time.unscaledTime + 1f;
             }
-            if (_camera == null) { return; }
-            Vector3 toBubble = transform.position - _camera.transform.position;
+            Camera cam = CameraOverride != null ? CameraOverride : _camera;
+            if (cam == null) { return; }
+            Vector3 toBubble = transform.position - cam.transform.position;
             transform.rotation = Quaternion.LookRotation(toBubble, Vector3.up);
-            transform.localScale = Vector3.one * Mathf.Clamp(toBubble.magnitude * _screenScale, _minScale, _maxScale);
+            transform.localScale = Vector3.one * (_baseScale > 0f ? _baseScale : (_baseScale = transform.localScale.x)) * Mathf.Clamp(toBubble.magnitude * _screenScale, _minScale, _maxScale);
         }
     }
 }
