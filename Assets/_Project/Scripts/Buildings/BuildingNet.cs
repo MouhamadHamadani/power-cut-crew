@@ -45,7 +45,6 @@ namespace PowerCutCrew.Buildings
         private readonly NetworkVariable<byte> _bubbleLine = new NetworkVariable<byte>(0);
         private readonly NetworkVariable<float> _bubbleStart = new NetworkVariable<float>(-1000f);
 
-        private PowerSocket _socket;
         private float _nextHappinessSync;
         private bool _lit;
         private bool _litKnown;
@@ -71,7 +70,7 @@ namespace PowerCutCrew.Buildings
             }
         }
 
-        public PowerSocket Socket => _socket != null ? _socket : (_socket = PowerSocket.ById(Index));
+        public PowerSocket Socket => PowerSocket.ById(Index);   // a handful of sockets: no cache (a cached copy can outlive a respawn, or be a client copy when the host's exists)
         public bool Powered => Socket != null && Socket.Powered;
 
         public MarkerState Marker

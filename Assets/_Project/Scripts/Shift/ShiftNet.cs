@@ -69,6 +69,7 @@ namespace PowerCutCrew.Shift
         public int Money => _money.Value;
         public int ShiftNumber => _shiftNumber.Value;
         public ShiftSummaryData Summary => _summary.Value;
+        public ShiftHud Hud => _hud;
         public float Duration => ShiftTuning.Instance.Duration;
 
         /// <summary>Host: the buildings' rules, while a shift runs.</summary>
