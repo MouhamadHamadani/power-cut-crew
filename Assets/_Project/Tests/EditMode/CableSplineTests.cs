@@ -236,43 +236,33 @@ namespace PowerCutCrew.Tests.EditMode
             tube.Apply(mesh);
         }
 
-        /// <summary>Bytes the whole editor allocated in the frame that just ended (Unity's own "GC Allocated In Frame" counter).</summary>
-        private static long AllocatedLastFrame(Unity.Profiling.ProfilerRecorder recorder) => recorder.LastValue;
+        /// <summary>Managed heap growth while the action ran. It runs synchronously on the main thread, so the editor cannot allocate in between
+        /// (a frame counter also counts everything else the editor does in that frame). A collection mid-run could only hide allocations, which the control below would show.</summary>
+        private static long Allocated(System.Action action)
+        {
+            long before = System.GC.GetTotalMemory(false);
+            action();
+            return System.GC.GetTotalMemory(false) - before;
+        }
 
-        [UnityEngine.TestTools.UnityTest]
-        public System.Collections.IEnumerator TheRebuildDoesNotAllocate_AndTheProbeCanSeeAllocations()
+        [Test]
+        public void TheRebuildDoesNotAllocate_AndTheProbeCanSeeAllocations()
         {
             var points = new List<Vector3>(33);
             for (int i = 0; i < 32; i++) { points.Add(Vector3.zero); }
             var samples = new List<Vector3>(CableSpline.SampleCount(32, 4) + 2);
             var tube = new CableTubeMesh(6, 0.025f, CableSpline.SampleCount(32, 4) + 2);
             var mesh = new Mesh();
-            using (Unity.Profiling.ProfilerRecorder recorder = Unity.Profiling.ProfilerRecorder.StartNew(Unity.Profiling.ProfilerCategory.Memory, "GC Allocated In Frame"))
-            {
-                for (int i = 0; i < 5; i++) { Rebuild(points, samples, tube, mesh, i * 0.1f); yield return null; }   // warm up
+            for (int i = 0; i < 5; i++) { Rebuild(points, samples, tube, mesh, i * 0.1f); }   // warm up
 
-                long idle = 0;
-                for (int i = 0; i < 5; i++) { yield return null; idle = System.Math.Max(idle, AllocatedLastFrame(recorder)); }   // what an empty frame costs here
+            long idle = Allocated(() => { });                                                  // what the probe itself costs
+            long rebuilds = Allocated(() => { for (int i = 0; i < 200; i++) { Rebuild(points, samples, tube, mesh, 3f + i * 0.02f); } });
+            var garbage = new List<int[]>();
+            long control = Allocated(() => { for (int i = 0; i < 200; i++) { garbage.Add(new int[2048]); } });   // 1.6 MB of real garbage
 
-                // 200 rebuilds inside one frame. The editor can allocate in the same frame (the first run after a recompile does, half a MB),
-                // and that only ever adds bytes: the smallest of several frames is what the rebuilds themselves cost.
-                long rebuilds = long.MaxValue;
-                for (int attempt = 0; attempt < 5; attempt++)
-                {
-                    for (int i = 0; i < 200; i++) { Rebuild(points, samples, tube, mesh, 3f + (attempt * 200 + i) * 0.02f); }
-                    yield return null;
-                    rebuilds = System.Math.Min(rebuilds, AllocatedLastFrame(recorder));
-                }
-
-                var garbage = new List<int[]>();
-                for (int i = 0; i < 200; i++) { garbage.Add(new int[2048]); }   // control: 1.6 MB of real garbage in one frame
-                yield return null;
-                long control = AllocatedLastFrame(recorder);
-
-                Assert.Greater(control, 1000000, $"the profiler counter does not see allocations here (control frame {control} bytes)");
-                Assert.LessOrEqual(rebuilds, idle + 256, $"200 rebuilds allocated about {rebuilds - idle} bytes more than an idle frame (idle {idle}, with rebuilds {rebuilds})");
-                Assert.AreEqual(200, garbage.Count);
-            }
+            Assert.Greater(control, 1000000, $"the probe does not see allocations here (control {control} bytes)");
+            Assert.LessOrEqual(rebuilds, idle + 256, $"200 rebuilds allocated about {rebuilds - idle} bytes more than nothing (idle {idle}, with rebuilds {rebuilds})");
+            Assert.AreEqual(200, garbage.Count);
             Object.DestroyImmediate(mesh);
         }
 

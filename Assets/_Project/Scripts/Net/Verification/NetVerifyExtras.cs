@@ -40,11 +40,39 @@ namespace PowerCutCrew.Net
             Checkers.Add(check);
         }
 
+        public const string RecheckPrefix = "R|";
+        public const float RecheckSeconds = 0.5f;
         public const float StreamTolerance = 0.02f;
+
+        /// <summary>Host: a game-report difference seen once, waiting for the client's second report.</summary>
+        private static readonly Dictionary<ulong, string> Pending = new Dictionary<ulong, string>();
         public const int MaxSnapshotsBehind = 150;
 
         public static void Check(ulong clientId, string report, ulong[] keys, ushort[] seqs, int[] counts, Vector3[] positions)
         {
+            if (report.StartsWith(RecheckPrefix))
+            {
+                // the same comparison, 0.5 s later, only when the first one differed: a value that was just moving has caught up
+                if (!Pending.TryGetValue(clientId, out string first)) { return; }
+                Pending.Remove(clientId);
+                string again = HostCheck(report.Substring(RecheckPrefix.Length));
+                if (again == "skip")
+                {
+                    NetMetrics.Count("verifyExtraSkipped");
+                    Debug.Log($"[Verify2] OK (state changing again, re-check skipped) client {clientId}: first difference was {first.Trim()}");
+                }
+                else if (again == null)
+                {
+                    NetMetrics.Count("verifyExtraRecovered");
+                    Debug.Log($"[Verify2] OK on re-check client {clientId}: differed at first ({first.Trim()}), the same {RecheckSeconds:F1} s later it matches");
+                }
+                else
+                {
+                    NetMetrics.Count("verifyExtraFail");
+                    Debug.Log($"[Verify2] FAIL client {clientId}: still differs after {RecheckSeconds:F1} s: {again.Trim()} (first: {first.Trim()})");
+                }
+                return;
+            }
             var sb = new StringBuilder();
             int bad = 0;
             int offset = 0;
@@ -78,6 +106,8 @@ namespace PowerCutCrew.Net
             }
 
             string diff = HostCheck(report);
+            bool differs = diff != null && diff != "skip";
+            if (differs) { Pending[clientId] = diff; diff = null; }   // counted only if the re-check still differs
             bool skipped = diff == "skip";
             if (diff != null && !skipped)
             {
@@ -85,6 +115,7 @@ namespace PowerCutCrew.Net
                 sb.Append(' ').Append(diff);
             }
             string prefix = $"client {clientId}: {keys.Length} streams (worst {worst * 100f:F1} cm)";
+            if (bad == 0 && differs) { return; }   // the re-check decides
             if (bad == 0)
             {
                 NetMetrics.Count(skipped ? "verifyExtraSkipped" : "verifyExtraOk");
