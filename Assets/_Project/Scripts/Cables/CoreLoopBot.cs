@@ -119,7 +119,7 @@ namespace PowerCutCrew.Cables
             }
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
             // only the host's bot (it can reach the host-side cable): now and then yank a plugged cable to exercise the pop-out
-            if (gen.IsServer && R() < 0.02f)
+            if (gen.IsServer && LaunchArgs.Has("-yank") && R() < 0.02f)
             {
                 foreach (CableNet c in CableNet.All)
                 {

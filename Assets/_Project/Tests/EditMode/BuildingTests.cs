@@ -84,7 +84,7 @@ namespace PowerCutCrew.Tests.EditMode
         }
 
         [Test]
-        public void HappinessRisesTwoPerSecondWhenPowered_FallsThreePerSecondWhenNot_AndHoldsWhileQuiet()
+        public void HappinessRisesTwoPerSecondWhenPowered_FallsOnePerSecondWhenNot_AndHoldsWhileQuiet()
         {
             var m = new BuildingModel(Fast(), 5f, 1);
             m.Start();
@@ -94,7 +94,7 @@ namespace PowerCutCrew.Tests.EditMode
             Assert.AreEqual(h0 + 10f, m.Happiness, 0.3f, "+2 per second powered");
             float h1 = m.Happiness;
             Run(m, 5f, false);
-            Assert.AreEqual(h1 - 15f, m.Happiness, 0.5f, "-3 per second unpowered");
+            Assert.AreEqual(h1 - 5f, m.Happiness, 0.5f, "-1 per second unpowered");
             Run(m, 15f, false);                       // the request window ends (20 s) and the quiet window begins
             Assert.AreEqual(DemandWindow.Quiet, m.Window);
             float held = m.Happiness;
@@ -123,7 +123,7 @@ namespace PowerCutCrew.Tests.EditMode
             var m = new BuildingModel(s, 5f, 1);
             m.Start();
             Run(m, 1.2f, true);
-            BuildingEvent events = Run(m, 30f, false);   // 70 / 3 = 23.3 s to zero
+            BuildingEvent events = Run(m, 75f, false);   // 70 / 1 = 70 s to zero
             Assert.IsTrue(m.Angry);
             Assert.AreEqual(0f, m.Happiness, 1e-4f);
             Assert.IsTrue((events & BuildingEvent.BecameAngry) != 0);
@@ -302,8 +302,8 @@ namespace PowerCutCrew.Tests.EditMode
             Assert.Greater(money, 0f);
             Assert.AreEqual(money, g.Models[0].Earned + g.Models[1].Earned, 1e-3f);
             Assert.AreEqual(0f, g.Models[1].Earned);
-            Assert.AreEqual(0, g.AngryCount, "70 / 3 = 23 s to anger: not yet");
-            for (int i = 0; i < 250; i++) { g.Tick(0.1f, new[] { true, false }, events); }   // 40 s in total
+            Assert.AreEqual(0, g.AngryCount, "70 / 1 = 70 s to anger: not yet");
+            for (int i = 0; i < 650; i++) { g.Tick(0.1f, new[] { true, false }, events); }   // 80 s in total
             Assert.AreEqual(1, g.AngryCount);
             Assert.AreEqual(0, g.Models[0].Angry ? 1 : 0, "the powered one is happy");
         }
@@ -412,8 +412,8 @@ namespace PowerCutCrew.Tests.EditMode
             Assert.AreEqual(30f, t.QuietMin); Assert.AreEqual(60f, t.QuietMax);
             Assert.AreEqual(3, t.MaxRequesting);
             Assert.AreEqual(0.2f, t.SpikeChance, 1e-6f); Assert.AreEqual(1.5f, t.SpikeMultiplier); Assert.AreEqual(20f, t.SpikeSeconds);
-            Assert.AreEqual(70f, t.StartHappiness); Assert.AreEqual(2f, t.RisePerSecond); Assert.AreEqual(3f, t.FallPerSecond);
-            Assert.AreEqual(1f, t.RatePerAmpPerMinute);
+            Assert.AreEqual(70f, t.StartHappiness); Assert.AreEqual(2f, t.RisePerSecond); Assert.AreEqual(1f, t.FallPerSecond);
+            Assert.AreEqual(10f, t.RatePerAmpPerMinute);
             Assert.AreEqual(10f, t.UnpoweredLineSeconds); Assert.AreEqual(3f, t.BubbleSeconds);
             var shift = UnityEngine.Resources.Load<PowerCutCrew.Shift.ShiftTuning>("ShiftTuning");
             Assert.AreEqual(600f, shift.DurationSeconds); Assert.AreEqual(3f, shift.CountdownSeconds);

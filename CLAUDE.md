@@ -80,7 +80,7 @@ transport (`Steam`), Steamworks.NET. Host-authoritative P2P over Steam lobbies. 
 - **Many-body physics** (cable, chains) syncs through `SnapshotStream`, **not** per-object NetworkTransforms.
 - Connection approval is `ConnectionRules` (full, version mismatch). Steam is only initialised when Steam mode is used.
 - Launch args: `-host`, `-client <ip>`, `-steamhost`, `-steamclient <lobbyId>`, `-bot`, `-duration <s>`, `-netsim none|bad|awful`,
-  `-seed <n>`, `-role <name>`, `-verify` (late-join assertion: core loop, shift state / time / money, every building's window, powered, happiness, Angry, bubble), `-autostart` (a bot starts the shift at the clipboard), `-shifts <n>`, `-shiftseconds <s>`, `-holdforever`, `-holdplug`, `-snapbias`, `-botlog`,
+  `-seed <n>`, `-role <name>`, `-verify` (late-join assertion: core loop, shift state / time / money, every building's window, powered, happiness, Angry, bubble), `-autostart` (a bot starts the shift at the clipboard), `-yank` (the host bot fakes a pull on a plugged cable), `-cabletrace` (stretch after each plug-in), `-shifts <n>`, `-shiftseconds <s>`, `-holdforever`, `-holdplug`, `-snapbias`, `-botlog`,
   `-shotdir <dir> -shot playpanel|prompt|coreloop|shift` (doc screenshots). F1 = debug overlay (dev builds).
 - `steam_appid.txt` (480) is copied for development builds only; release builds must not ship it.
 

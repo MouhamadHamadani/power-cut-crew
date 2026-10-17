@@ -254,9 +254,15 @@ namespace PowerCutCrew.Tests.EditMode
                 long idle = 0;
                 for (int i = 0; i < 5; i++) { yield return null; idle = System.Math.Max(idle, AllocatedLastFrame(recorder)); }   // what an empty frame costs here
 
-                for (int i = 0; i < 200; i++) { Rebuild(points, samples, tube, mesh, 3f + i * 0.02f); }   // 200 rebuilds inside one frame
-                yield return null;
-                long rebuilds = AllocatedLastFrame(recorder);
+                // 200 rebuilds inside one frame. The editor can allocate in the same frame (the first run after a recompile does, half a MB),
+                // and that only ever adds bytes: the smallest of several frames is what the rebuilds themselves cost.
+                long rebuilds = long.MaxValue;
+                for (int attempt = 0; attempt < 5; attempt++)
+                {
+                    for (int i = 0; i < 200; i++) { Rebuild(points, samples, tube, mesh, 3f + (attempt * 200 + i) * 0.02f); }
+                    yield return null;
+                    rebuilds = System.Math.Min(rebuilds, AllocatedLastFrame(recorder));
+                }
 
                 var garbage = new List<int[]>();
                 for (int i = 0; i < 200; i++) { garbage.Add(new int[2048]); }   // control: 1.6 MB of real garbage in one frame

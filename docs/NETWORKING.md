@@ -206,3 +206,38 @@ costs 0.175 ms per cable per frame on average (0.35 ms for both, worst single fr
 | S4 (host killed at 100 s) | all clients log "host left" and load `MainMenu` with `net.error.host_left`. 0 errors |
 
 Screenshots: `docs/screenshots/shift_hud_{en,ar}.png`, `shift_summary_{en,ar}.png`, `building_bubble_{en,ar}.png` (`-shot shift -shotdir docs/screenshots` on a bot client with graphics). Markers and bubbles had been drawn about 100 times too large (the per-frame distance scale replaced the canvas scale of 0.01 instead of multiplying it); fixed in `BuildingMarker` / `BuildingBubble`.
+
+### Why plugs came loose (fix/shift-tuning)
+
+Every pop-out and snap now logs a cause (`[Cable] outlet N popOut|snap cause: ...`, metrics `popOutCause_*` / `snapCause_*`) plus the rope stretch at plug-in and how long the plug stayed in (`plugSeconds`).
+`-cabletrace` logs the raw stretch every 0.5 s for 4 s after a plug-in. The test pull `CableNet.TestYank` (pop-out state machine fed a 25 % stretch) is now opt-in with `-yank`; before it fired in every bot run.
+
+- **Reach.** All four sockets are reachable with the 5 % slack and no tension: 4.1, 5.4, 7.8, 9.3, 10.2 and 11.2 m from the outlets against a 12 m rope (longest allowed 15 m). A seated, untouched cable sits at 0 to 1 % stretch.
+- **Cause.** A plug that stays untouched never pops out. Pop-outs came 2.3 to 2.6 s after plug-in (seat grace 2 s plus the 0.5 s limit) from a sudden hit: the stretch jumped from 1 % to 15 to 90 % in one step with 60 to 120 J in the rope.
+  The hit was the players' kinematic push capsule (`PlayerPushCollider`), which flings the light rope when a player (or bot) walks past the generator, where the first segments lie. Cans dropped on the rope do the same.
+- **Fix.** Cables ignore the players' push capsules (`PlayerPushCollider.All` / `Added`, `CableNet.IgnorePlayer`): players walk through cables. Cans, other cables and the held plug still collide.
+
+| Two-shift run (host + 3 bots, `bad`) | plug-ins | pop-outs by cause | snaps by cause |
+|---|---|---|---|
+| before, brief's S3 | 16 | 9 (not classified) | 9 (not classified) |
+| before, with causes and `-yank` | 21 | 9: yanked test pull 3, hit by player 3 + touched by player 1, hit by other cable 1, rope stretched alone 1 | 6: hit by player 3 + touched 1, can 1, other cable 1 |
+| before, without `-yank` | 21 | 10: hit by player 3 + touched 1, can 3, rope stretched alone 3 | 5: touched by player 4, rope stretched in reach 1 |
+| after (S3) | 13 | 0 | 4: rope stretched in reach 2 (a holder dragging the plug), hit by the other cable 2 |
+
+After the fix S1 had 2 pop-outs (both a can) and 3 snaps (can, in reach, a player), S2 none. "Rope stretched alone" means no hit was recorded; the players' contacts were not always seen, so treat it as unexplained rather than as proof.
+
+### Tuning (fix/shift-tuning)
+
+`FallPerSecond` 3 to 1 (70 s in the dark before a building goes Angry, `RisePerSecond` stays 2) and `RatePerAmpPerMinute` 1 to 10 (a 5 A building pays 50 a minute). Tests that depended on the old numbers are updated.
+`CableRebuildAllocationTests` read one frame and failed when the editor allocated in that same frame (the first run after a recompile, about half a MB); it now takes the smallest of five frames, the threshold is unchanged (20 of 20 passes, the first one right after a recompile).
+
+### Re-run on a fresh build (marker scale fix included)
+
+| Run | Result |
+|---|---|
+| S1 | 0 errors. Uptime **53.3 %**, money **192**, Angry **1**, 2 spikes, 0 overheats, snaps 3, pop-outs 2. Host upload 125.7 kbps average, 262.9 peak. Target (uptime 20 to 95 %, at most 2 Angry) met |
+| S2 | 0 errors. Late joiner: 7 full comparisons OK, 1 skipped, 0 mismatches. Uptime 24.6 %, money 117, Angry 2, 1 overheat, snaps 0, pop-outs 0. Host upload 46.7 average (a 2-bot run), 270 peak |
+| S3 | 0 errors. Shift 1: uptime 27.3 %, money 116, Angry 0; shift 2: 25.6 %, 88, Angry 2. After "Another shift": money 0, held items 0, bubbles 0, happiness 70 everywhere. Snaps 4, pop-outs 0. Host upload 106.9 / 282.6 |
+| S4 | all clients log "host left" and load `MainMenu`. No exceptions in any log |
+
+Two `-verify` mismatches showed up in the core-loop comparison (not in shift or building fields, and not on the late joiner): S2 generator heat 86 vs 90 on a client while the heat was climbing towards the overheat (tolerance 4), S3 a cable seen as Held on a client while the host had plugged it. Both are timing noise of the older comparison under `bad`; not changed.

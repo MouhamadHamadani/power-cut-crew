@@ -33,8 +33,8 @@ namespace PowerCutCrew.Buildings
             QuietMin = 30f, QuietMax = 60f,
             InitialDelayMin = 3f, InitialDelayMax = 25f,
             SpikeChance = 0.2f, SpikeMultiplier = 1.5f, SpikeSeconds = 20f,
-            StartHappiness = 70f, HappinessRise = 2f, HappinessFall = 3f,
-            RatePerAmpPerMinute = 1f,
+            StartHappiness = 70f, HappinessRise = 2f, HappinessFall = 1f,
+            RatePerAmpPerMinute = 10f,
             UnpoweredLineSeconds = 10f,
         };
     }

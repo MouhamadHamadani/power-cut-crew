@@ -24,8 +24,8 @@ MonoBehaviour:
   SpikeSeconds: 20
   StartHappiness: 70
   RisePerSecond: 2
-  FallPerSecond: 3
-  RatePerAmpPerMinute: 1
+  FallPerSecond: 1
+  RatePerAmpPerMinute: 10
   UnpoweredLineSeconds: 10
   BubbleSeconds: 3
   SyncRateHz: 4
