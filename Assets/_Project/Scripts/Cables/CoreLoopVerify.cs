@@ -22,8 +22,7 @@ namespace PowerCutCrew.Cables
         private static void Register()
         {
             if (!LaunchArgs.Verify) { return; }
-            NetVerifyExtras.BuildReport = BuildReport;
-            NetVerifyExtras.HostCheck = HostCheck;
+            NetVerifyExtras.Add(BuildReport, HostCheck);
             var go = new GameObject("CoreLoopVerify") { hideFlags = HideFlags.HideAndDontSave };
             DontDestroyOnLoad(go);
             go.AddComponent<CoreLoopVerify>();

@@ -94,6 +94,7 @@ namespace PowerCutCrew.Buildings
             }
         }
 
+        public bool HasBubble => _bubbleId.Value != 0;
         public string BubbleKey => $"bld.line.{BubbleName((BubbleTrigger)_bubbleTrigger.Value)}.{_bubbleLine.Value}";
 
         public static string BubbleName(BubbleTrigger t)

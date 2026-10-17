@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
@@ -13,11 +14,31 @@ namespace PowerCutCrew.Net
     public static class NetVerifyExtras
     {
         /// <summary>Client: describe what this machine sees.</summary>
-        public static Func<string> BuildReport;
+        public static Func<string> BuildReport => () => string.Join(";", Reporters.ConvertAll(r => r()));
 
         /// <summary>Host: compare a client's report with the host state. Returns null when it matches, "skip" when the host state
         /// was changing too fast to compare, otherwise a description of what differs.</summary>
-        public static Func<string, string> HostCheck;
+        public static string HostCheck(string report)
+        {
+            string all = null;
+            foreach (Func<string, string> c in Checkers)
+            {
+                string d = c(report);
+                if (d == "skip") { return d; }
+                if (d != null) { all += d; }
+            }
+            return all;
+        }
+
+        private static readonly List<Func<string>> Reporters = new List<Func<string>>();
+        private static readonly List<Func<string, string>> Checkers = new List<Func<string, string>>();
+
+        /// <summary>Plug a game system in: its report is joined with the others (";"-separated key=value parts), its check sees the whole report.</summary>
+        public static void Add(Func<string> build, Func<string, string> check)
+        {
+            Reporters.Add(build);
+            Checkers.Add(check);
+        }
 
         public const float StreamTolerance = 0.02f;
         public const int MaxSnapshotsBehind = 150;
@@ -56,7 +77,7 @@ namespace PowerCutCrew.Net
                 offset += n;
             }
 
-            string diff = HostCheck?.Invoke(report);
+            string diff = HostCheck(report);
             bool skipped = diff == "skip";
             if (diff != null && !skipped)
             {
