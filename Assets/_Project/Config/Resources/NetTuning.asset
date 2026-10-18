@@ -19,12 +19,27 @@ MonoBehaviour:
   TickRate: 30
   GameScene: Street_Greybox
   MenuScene: MainMenu
+  VerifyHeatBase: 4
+  VerifyFuelBase: 1.5
+  VerifySnapshotAgeSeconds: 1
   InterpolationBufferSeconds: 0.1
   SnapshotRateHz: 20
   SnapshotExtentMeters: 32
   SnapshotHeartbeatSeconds: 1
   SnapshotMotionThresholdMeters: 0.0005
+  CableFastSpeed: 0.5
+  CableSlowRateHz: 10
   HeldBlendSeconds: 0.15
+  ReleasePoseTolerance: 2.5
+  ThrowSpeedMargin: 1.15
+  GhostHandoverDistance: 0.05
+  GhostMinSeconds: 0.25
+  GhostMaxSeconds: 1.5
+  CanLinearDamping: 0.3
+  CanAngularDamping: 2
+  CanFriction: 0.9
+  HoldKeepAliveInterval: 0.2
+  HoldKeepAliveTimeout: 0.5
   NetSimCalibration: 0.55
   NetSimProfiles:
   - Name: bad

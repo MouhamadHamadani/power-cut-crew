@@ -72,6 +72,14 @@ namespace PowerCutCrew.Buildings
         public float ScreenMargin = 70f;
         [Tooltip("Off-screen icons sit this much further in from the edge (reference pixels), so their arrow stays on screen.")]
         public float CompactInset = 90f;
+        [Tooltip("Off-screen icons keep this far (reference pixels) from the top and bottom reserved bands: the icon plus its arrow.")]
+        public float CompactReach = 115f;
+        [Tooltip("Reference pixels kept free along the bottom edge for the tip panel, the interaction prompt and the corner hint.")]
+        public float BottomReserved = 330f;
+        [Tooltip("Beyond this distance (m) a marker is compact: icon and amps only, and a small dot for a Quiet building.")]
+        public float CompactDistance = 40f;
+        [Tooltip("A marker nudged more than this many reference pixels away from its building gets a thin leader line to it.")]
+        public float LeaderMinPixels = 36f;
         [Tooltip("Reference pixels kept free along the top edge for the HUD strip.")]
         public float TopReserved = 110f;
         [Tooltip("Gap (reference pixels) between two markers that were pushed apart.")]

@@ -19,6 +19,7 @@ namespace PowerCutCrew.Editor
         private static readonly Color Ink = new Color(0.05f, 0.07f, 0.16f, 1f);
         private static Sprite[] _statusIcons;
         private static Sprite _arrowSprite;
+        private static Sprite _dotSprite;
 
         // ---------- icons ----------
 
@@ -100,6 +101,7 @@ namespace PowerCutCrew.Editor
                 float m = Dist(x, y, 64f, 30f);
                 return m > 15f && m < 24f && y > 32f;                                                       // the frown
             });
+            _dotSprite = MakeIcon("status_dot", (x, y) => Dist(x, y, 64f, 64f) < 58f);
             float[] arrowPts = { 8f, 10f, 120f, 64f, 8f, 118f, 34f, 64f };
             _arrowSprite = MakeIcon("status_arrow", (x, y) => InPolygon(x, y, arrowPts));
             _statusIcons = new[] { moon, bulb, bolt, angry };
@@ -121,12 +123,23 @@ namespace PowerCutCrew.Editor
             group.blocksRaycasts = false;
             group.interactable = false;
 
+            Image leader = Panel("Leader", rt, new Color32(0xFF, 0xF4, 0xDC, 0xE6));
+            leader.rectTransform.SetAsFirstSibling();   // behind the panel
+            leader.gameObject.SetActive(false);
+            Image dot = Panel("Dot", rt, BuildingMarker.QuietColor);
+            dot.sprite = _dotSprite;
+            Place(dot.rectTransform, 0f, 0f, 30f, 30f);
+            dot.gameObject.SetActive(false);
+
             Image icon = Panel("Icon", rt, Ink);
             icon.sprite = _statusIcons[0];
             icon.preserveAspect = true;
             Place(icon.rectTransform, -125f, 20f, 88f, 88f);
 
             RTLTextMeshPro amps = ContentSetup.MakeText("Amps", rt, "bld.amps_format", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 54f, Ink);
+            amps.enableAutoSizing = true;   // the far form is narrower
+            amps.fontSizeMin = 26f;
+            amps.fontSizeMax = 54f;
             Place((RectTransform)amps.transform, 45f, 20f, 230f, 80f);
             RTLTextMeshPro nameText = ContentSetup.MakeText("Name", rt, "bld.name.0", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 34f, Ink);
             nameText.enableAutoSizing = true;
@@ -163,6 +176,8 @@ namespace PowerCutCrew.Editor
             Set(ui, "_panel", panel);
             Set(ui, "_icon", icon);
             Set(ui, "_arrow", arrow);
+            Set(ui, "_dot", dot);
+            Set(ui, "_leader", leader);
             Set(ui, "_amps", Loc(amps));
             Set(ui, "_name", Loc(nameText));
             Set(ui, "_spike", Loc(spike));
@@ -298,10 +313,10 @@ namespace PowerCutCrew.Editor
         {
             StringTableCollection ui = LocalizationEditorSettings.GetStringTableCollection("UI");
             Add(ui, "bld.spike_format", "×{0}", "×{0}");
-            Add(ui, "help.legend.quiet", "Doesn't need power right now", "ما بدها كهربا هلّق");
-            Add(ui, "help.legend.powered", "Has power", "عندها كهربا");
-            Add(ui, "help.legend.unpowered", "Needs a cable now!", "بدها كابل هلّق!");
-            Add(ui, "help.legend.angry", "Angry: stopped paying", "زعلانة: وقّفت تدفع");
+            Add(ui, "help.legend.quiet", "Doesn't need power right now", "لا تحتاج كهرباء الآن");
+            Add(ui, "help.legend.powered", "Has power", "الكهرباء واصلة");
+            Add(ui, "help.legend.unpowered", "Needs a cable now!", "تحتاج كابلاً الآن!");
+            Add(ui, "help.legend.angry", "Angry: stopped paying", "غاضبة: توقفت عن الدفع");
             Add(ui, "help.act.move", "Move", "تحرّك");
             Add(ui, "help.act.look", "Look", "انظر");
             Add(ui, "help.act.jump", "Jump", "اقفز");
@@ -314,15 +329,15 @@ namespace PowerCutCrew.Editor
             Add(ui, "help.act.help", "This card", "هذه البطاقة");
             Add(ui, "help.binding", "{0}", "{0}");
             Add(ui, "help.mouse", "Mouse", "الماوس");
-            Add(ui, "help.hint", "{0}: controls", "التحكّم: {0}");
-            Add(ui, "help.hint_hide", "Hide the corner hint", "أخفِ التلميح بالزاوية");
-            Add(ui, "help.hint_show", "Show the corner hint", "أظهر التلميح بالزاوية");
-            Add(ui, "help.card.title", "Controls", "التحكّم");
-            Add(ui, "help.card.close", "{0}: close", "إغلاق: {0}");
-            Add(ui, "tip.plug", "{0}: grab the plug and carry it to a flashing building", "أمسك القابس وأوصله لبناية عم تومض ({0})");
-            Add(ui, "tip.unpowered", "A building is in the dark! Plug a cable into its socket", "في بناية بالعتمة! وصّلها بكابل عالمقبس");
-            Add(ui, "tip.fuel", "Fuel is low: fill the tank from a jerrycan or the drum", "المازوت عم يخلص: عبّي الخزان من الجالون أو البرميل");
-            Add(ui, "tip.overheat", "The generator is overheating: unplug a cable to let it cool", "المولد عم يسخن: فصّل كابل ليبرد");
+            Add(ui, "help.hint", "controls", "التحكم");   // the key name is added by RtlBinding
+            Add(ui, "help.hint_hide", "Hide the corner hint", "إخفاء التلميح في الزاوية");
+            Add(ui, "help.hint_show", "Show the corner hint", "إظهار التلميح في الزاوية");
+            Add(ui, "help.card.title", "Controls", "التحكم");
+            Add(ui, "help.card.close", "close", "إغلاق");
+            Add(ui, "tip.plug", "grab the plug and carry it to a flashing building", "أمسك القابس وانقله إلى مبنى يومض");
+            Add(ui, "tip.unpowered", "A building is in the dark! Plug a cable into its socket", "مبنى بلا كهرباء! صِل كابلاً بمقبسه");
+            Add(ui, "tip.fuel", "Fuel is low: fill the tank from a jerrycan or the drum", "الوقود منخفض: املأ الخزان من الجالون أو البرميل");
+            Add(ui, "tip.overheat", "The generator is overheating: unplug a cable to let it cool", "المولّد يسخن: افصل كابلاً ليبرد");
         }
     }
 }

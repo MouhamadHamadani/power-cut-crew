@@ -26,7 +26,7 @@ namespace PowerCutCrew.Localization
         /// <summary>Re-apply the current string (after changing <see cref="Format"/> or the values it uses).</summary>
         public void Refresh()
         {
-            if (_last != null && _label != null) { _label.text = Format != null ? Format(_last) : _last; }
+            if (_last != null && _label != null) { _label.text = Shown(_last); }
         }
 
         /// <summary>Show the UI-table string with this key (empty key clears the label). Safe to call at runtime.</summary>
@@ -65,7 +65,14 @@ namespace PowerCutCrew.Localization
             _label.font = arabic ? _arabicFont : _englishFont;
             _label.alignment = arabic ? Mirror(_baseAlignment) : _baseAlignment;
             _last = value;
-            _label.text = Format != null ? Format(value) : value;
+            _label.text = Shown(value);
+        }
+
+        /// <summary>The formatted text, with Arabic-Indic digits in Arabic (one rule for every number on screen).</summary>
+        private string Shown(string value)
+        {
+            string shown = Format != null ? Format(value) : value;
+            return RtlBinding.IsArabic ? ArabicDigits.Convert(shown) : shown;
         }
 
         private static TextAlignmentOptions Mirror(TextAlignmentOptions a)

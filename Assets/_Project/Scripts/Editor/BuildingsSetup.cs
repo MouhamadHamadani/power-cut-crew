@@ -31,9 +31,10 @@ namespace PowerCutCrew.Editor
             AssetDatabase.Refresh();
             ContentSetup.LoadFonts();
 
-            LoadOrCreate<BuildingTuning>($"{Root}/Config/Resources/BuildingTuning.asset");
+            EditorUtility.SetDirty(LoadOrCreate<BuildingTuning>($"{Root}/Config/Resources/BuildingTuning.asset"));   // saved again so a new field shows up in the asset
             LoadOrCreate<ShiftTuning>($"{Root}/Config/Resources/ShiftTuning.asset");
-            LoadOrCreate<HelpTuning>($"{Root}/Config/Resources/HelpTuning.asset");
+            EditorUtility.SetDirty(LoadOrCreate<HelpTuning>($"{Root}/Config/Resources/HelpTuning.asset"));
+            EditorUtility.SetDirty(AssetDatabase.LoadAssetAtPath<PowerCutCrew.Net.NetTuning>($"{Root}/Config/Resources/NetTuning.asset"));
             CreateStrings();
             CreateReadabilityStrings();
             GenerateIcons();
@@ -383,17 +384,17 @@ namespace PowerCutCrew.Editor
             Add(ui, "shift.hud.time", "{0}", "{0}");
             Add(ui, "shift.hud.money", "{0} $", "{0} $");
             Add(ui, "shift.hud.load", "{0} / {1} A", "{0} / {1} أمبير");
-            Add(ui, "shift.hud.lobby", "Walk to the clipboard by the generator to start the shift", "روح عالورقة حدّ المولد لتبدأ الوردية");
-            Add(ui, "shift.sum.title", "Shift over", "خلصت الوردية");
-            Add(ui, "shift.sum.uptime", "Uptime: {0}%", "الكهربا كانت شغّالة: {0}%");
-            Add(ui, "shift.sum.money", "Money earned: {0} $", "المصاري يلي كسبناها: {0} $");
-            Add(ui, "shift.sum.angry", "Angry buildings: {0}", "بنايات زعلانة: {0}");
-            Add(ui, "shift.sum.overheats", "Generator overheats: {0}", "المولد سخن: {0} مرة");
-            Add(ui, "shift.sum.snaps", "Snapped cables: {0}", "كوابل انقطعت: {0}");
-            Add(ui, "shift.sum.pulls", "Failed cord pulls: {0}", "سحبات حبل فاشلة: {0}");
-            Add(ui, "shift.sum.again", "Another shift", "وردية تانية");
-            Add(ui, "shift.sum.menu", "Back to menu", "رجوع للقائمة");
-            Add(ui, "shift.sum.waiting", "Waiting for host", "عم نستنى المضيف");
+            Add(ui, "shift.hud.lobby", "Walk to the clipboard by the generator to start the shift", "اذهب إلى اللوح بجانب المولّد لبدء الوردية");
+            Add(ui, "shift.sum.title", "Shift over", "انتهت الوردية");
+            Add(ui, "shift.sum.uptime", "Uptime: {0}%", "نسبة تشغيل الكهرباء: {0}%");
+            Add(ui, "shift.sum.money", "Money earned: {0} $", "المال المكتسب: {0} $");
+            Add(ui, "shift.sum.angry", "Angry buildings: {0}", "مبانٍ غاضبة: {0}");
+            Add(ui, "shift.sum.overheats", "Generator overheats: {0}", "ارتفعت حرارة المولّد: {0} مرة");
+            Add(ui, "shift.sum.snaps", "Snapped cables: {0}", "كابلات انقطعت: {0}");
+            Add(ui, "shift.sum.pulls", "Failed cord pulls: {0}", "محاولات سحب فاشلة: {0}");
+            Add(ui, "shift.sum.again", "Another shift", "وردية أخرى");
+            Add(ui, "shift.sum.menu", "Back to menu", "العودة إلى القائمة");
+            Add(ui, "shift.sum.waiting", "Waiting for host", "بانتظار المضيف");
             Add(ui, "shift.verdict.loved", "The street loves you", "الشارع بيحبكن");
             Add(ui, "shift.verdict.good", "Not bad, the neighbors will pay again", "مش بطّال، الجيران رح يدفعوا مرة تانية");
             Add(ui, "shift.verdict.meh", "The neighbors are grumbling", "الجيران عم يتذمّروا");

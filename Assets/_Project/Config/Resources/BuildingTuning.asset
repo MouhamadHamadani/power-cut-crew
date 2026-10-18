@@ -28,6 +28,21 @@ MonoBehaviour:
   RatePerAmpPerMinute: 10
   UnpoweredLineSeconds: 10
   BubbleSeconds: 3
+  MarkerAnchorAboveRoof: 1.2
+  MarkerAnchorFront: 2
+  NearDistance: 14
+  FarDistance: 55
+  FarScale: 0.85
+  QuietAlpha: 0.75
+  ScreenMargin: 70
+  CompactInset: 90
+  CompactReach: 115
+  BottomReserved: 330
+  CompactDistance: 40
+  LeaderMinPixels: 36
+  TopReserved: 110
+  NudgeGap: 8
+  FlashSpeed: 12
   SyncRateHz: 4
   Buildings:
   - NameKey: bld.name.0

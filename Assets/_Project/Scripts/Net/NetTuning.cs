@@ -30,6 +30,14 @@ namespace PowerCutCrew.Net
         public string GameScene = "Street_Greybox";
         public string MenuScene = "MainMenu";
 
+        [Header("-verify")]
+        [Tooltip("A client generator heat may differ from the host by this much plus what heat changes during the age of the report.")]
+        public float VerifyHeatBase = 4f;
+        [Tooltip("The same for the generator fuel.")]
+        public float VerifyFuelBase = 1.5f;
+        [Tooltip("How old a client report is when the host compares it: the 4 Hz publishing, the trip and the wait for the next report.")]
+        public float VerifySnapshotAgeSeconds = 1f;
+
         [Header("Interpolation")]
         public float InterpolationBufferSeconds = 0.1f;
 

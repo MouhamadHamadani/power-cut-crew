@@ -17,6 +17,8 @@ namespace PowerCutCrew.Cables
         private const float QuietSeconds = 3f;
         private static float _changedAt;
         private static string _signature = "";
+        private static readonly RateTracker HeatRate = new RateTracker();
+        private static readonly RateTracker FuelRate = new RateTracker();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Register()
@@ -66,8 +68,12 @@ namespace PowerCutCrew.Cables
                 float fuel = float.Parse(g[1], CultureInfo.InvariantCulture);
                 float heat = float.Parse(g[2], CultureInfo.InvariantCulture);
                 if (g[0] != gen.State.ToString()) { sb.Append($"generator state {g[0]} vs host {gen.State}; "); }
-                if (Mathf.Abs(fuel - gen.Fuel) > 1.5f) { sb.Append($"generator fuel {fuel:F1} vs host {gen.Fuel:F1}; "); }
-                if (Mathf.Abs(heat - gen.Heat) > 4f) { sb.Append($"generator heat {heat:F0} vs host {gen.Heat:F0}; "); }
+                // heat and fuel keep moving: the tolerance grows with how fast they changed during the age of the client report
+                NetTuning nt = NetTuning.Instance;
+                float fuelTolerance = VerifyTolerance.For(nt.VerifyFuelBase, FuelRate.MaxAbsRate(Time.time), nt.VerifySnapshotAgeSeconds);
+                float heatTolerance = VerifyTolerance.For(nt.VerifyHeatBase, HeatRate.MaxAbsRate(Time.time), nt.VerifySnapshotAgeSeconds);
+                if (Mathf.Abs(fuel - gen.Fuel) > fuelTolerance) { sb.Append($"generator fuel {fuel:F1} vs host {gen.Fuel:F1} (tolerance {fuelTolerance:F1}); "); }
+                if (Mathf.Abs(heat - gen.Heat) > heatTolerance) { sb.Append($"generator heat {heat:F0} vs host {gen.Heat:F0} (tolerance {heatTolerance:F1}); "); }
             }
             foreach (string entry in Part(report, "cans").Split('|'))
             {
@@ -102,6 +108,8 @@ namespace PowerCutCrew.Cables
         {
             GeneratorNet gen = GeneratorNet.Instance;
             if (gen == null || !gen.IsServer) { return; }
+            HeatRate.Add(Time.time, gen.Heat);
+            FuelRate.Add(Time.time, gen.Fuel);
             var sb = new StringBuilder();
             sb.Append(gen.State);
             foreach (CableNet c in CableNet.All) { sb.Append($"|{c.Outlet}:{c.State}:{c.SocketId}:{c.GetInstanceID()}"); }

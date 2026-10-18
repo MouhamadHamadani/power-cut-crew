@@ -6,8 +6,9 @@ namespace PowerCutCrew.Buildings
 {
     /// <summary>
     /// One screen-space overlay canvas for every building marker and speech bubble. Each frame the markers' world anchors are projected with the camera,
-    /// <see cref="MarkerLayout"/> places them (clamped to the screen edge for urgent buildings that are out of view, pushed up when two overlap), and the
-    /// distance only changes their scale a little, so a name is as readable from the far end of the street as next to the building.
+    /// <see cref="MarkerLayout"/> places them (clamped to the edge of the free screen area for urgent buildings that are out of view, pushed up when two overlap),
+    /// and the distance only changes their size a little. Beyond <see cref="BuildingTuning.CompactDistance"/> a marker is a compact one (icon and amps; a dot for a Quiet
+    /// building), and a marker that was nudged far from its anchor gets a leader line to it.
     /// </summary>
     public class MarkerOverlay : MonoBehaviour
     {
@@ -36,10 +37,11 @@ namespace PowerCutCrew.Buildings
         private Camera _camera;
         private float _cameraSearch;
         private Vector2[] _pos = new Vector2[8];
+        private Vector2[] _anchor = new Vector2[8];
         private Vector2[] _size = new Vector2[8];
         private float[] _dist = new float[8];
-        private int[] _slot = new int[8];
         private float[] _scale = new float[8];
+        private int[] _slot = new int[8];
 
         private void Build()
         {
@@ -79,7 +81,7 @@ namespace PowerCutCrew.Buildings
             if (n == 0) { return; }
             if (_pos.Length < n)
             {
-                _pos = new Vector2[n]; _size = new Vector2[n]; _dist = new float[n]; _slot = new int[n]; _scale = new float[n];
+                _pos = new Vector2[n]; _anchor = new Vector2[n]; _size = new Vector2[n]; _dist = new float[n]; _scale = new float[n]; _slot = new int[n];
             }
             Camera cam = CameraOverride != null ? CameraOverride : _camera;
             if (cam == null && CameraOverride == null && Time.unscaledTime >= _cameraSearch)
@@ -90,56 +92,78 @@ namespace PowerCutCrew.Buildings
             BuildingTuning t = BuildingTuning.Instance;
             float factor = Mathf.Max(0.01f, _canvas.scaleFactor);
             var screen = new Vector2(Screen.width, Screen.height);
-            int full = 0;
+            float side = t.ScreenMargin * factor, top = t.TopReserved * factor, bottom = t.BottomReserved * factor;
+            int placed = 0;
             for (int i = 0; i < n; i++)
             {
                 BuildingMarker m = _markers[i];
                 BuildingMarkerUI ui = m != null ? m.Ui : null;
                 if (ui == null) { continue; }
                 if (cam == null) { ui.gameObject.SetActive(false); continue; }
-                Vector3 anchor = m.AnchorPosition;
-                Vector3 sp = cam.WorldToScreenPoint(anchor);
-                MarkerPlacement placed = MarkerLayout.Place(new Vector2(sp.x, sp.y), sp.z < 0f, screen, t.ScreenMargin * factor, t.TopReserved * factor);
+                Vector3 world = m.AnchorPosition;
+                Vector3 sp = cam.WorldToScreenPoint(world);
+                bool behind = sp.z < 0f;
+                MarkerPlacement spot = MarkerLayout.Place(new Vector2(sp.x, sp.y), behind, screen, side, top, bottom);
                 bool urgent = m.State == MarkerState.Unpowered || m.State == MarkerState.Angry;
-                if (placed.OnScreen)
+                float distance = Vector3.Distance(cam.transform.position, world);
+                if (spot.OnScreen)
                 {
+                    bool far = distance > t.CompactDistance;
+                    MarkerMode mode = !far ? MarkerMode.Full : (m.State == MarkerState.Quiet ? MarkerMode.Dot : MarkerMode.Far);
                     ui.gameObject.SetActive(true);
-                    ui.SetCompact(false);
-                    float scale = MarkerLayout.Scale(Vector3.Distance(cam.transform.position, anchor), t.NearDistance, t.FarDistance, t.FarScale);
+                    ui.SetMode(mode);
+                    float scale = mode == MarkerMode.Dot ? 1f : MarkerLayout.Scale(distance, t.NearDistance, t.FarDistance, t.FarScale);
                     ui.Root.localScale = Vector3.one * scale;
                     ui.SetAlpha(m.State == MarkerState.Quiet ? t.QuietAlpha : 1f);
-                    _slot[full] = i;
-                    _pos[full] = placed.Position;
-                    _size[full] = ui.Size * scale * factor;
-                    _dist[full] = Vector3.Distance(cam.transform.position, anchor);
-                    _scale[full] = scale;
-                    full++;
+                    ui.SetPosition(spot.Position / factor);
+                    ui.SetLeader(Vector2.zero);
+                    if (mode == MarkerMode.Dot) { continue; }   // a dot is tiny and sits on its anchor: it neither nudges nor is nudged
+                    _slot[placed] = i;
+                    _anchor[placed] = spot.Position;
+                    _pos[placed] = spot.Position;
+                    _size[placed] = ui.Size * scale * factor;
+                    _dist[placed] = distance;
+                    _scale[placed] = scale;
+                    placed++;
                 }
                 else if (urgent)
                 {
-                    // the icon sits further in than the screen margin so its arrow stays on screen
-                    MarkerPlacement icon = MarkerLayout.Place(new Vector2(sp.x, sp.y), sp.z < 0f, screen, (t.ScreenMargin + t.CompactInset) * factor, (t.TopReserved + t.CompactInset * 0.5f) * factor);
+                    // the icon sits further in than the free area, so its arrow stays on screen and out of the HUD strip and the tip panel
+                    float reach = t.CompactReach * factor;
+                    MarkerPlacement icon = MarkerLayout.Place(new Vector2(sp.x, sp.y), behind, screen, side + t.CompactInset * factor, top + reach, bottom + reach);
                     ui.gameObject.SetActive(true);
-                    ui.SetCompact(true, icon.ArrowAngle);
+                    ui.SetMode(MarkerMode.Edge, icon.ArrowAngle);
                     ui.Root.localScale = Vector3.one;
                     ui.SetAlpha(1f);
                     ui.SetPosition(icon.Position / factor);
                     // the edge icon holds its place: the full markers move around it (distance -1: the first one placed, never moved)
-                    _slot[full] = -1;
-                    _pos[full] = new Vector2(icon.Position.x, icon.Position.y - ui.Size.y * 0.5f * factor);
-                    _size[full] = ui.Size * factor;
-                    _dist[full] = -1f;
-                    full++;
+                    _slot[placed] = -1;
+                    _anchor[placed] = icon.Position;
+                    _pos[placed] = new Vector2(icon.Position.x, icon.Position.y - ui.Size.y * 0.5f * factor);
+                    _size[placed] = ui.Size * factor;
+                    _dist[placed] = -1f;
+                    _scale[placed] = 1f;
+                    placed++;
                 }
                 else
                 {
                     ui.gameObject.SetActive(false);
                 }
             }
-            float ceiling = screen.y - t.TopReserved * factor;   // under the HUD strip
-            for (int k = 0; k < full; k++) { if (_slot[k] >= 0) { _pos[k].y = Mathf.Min(_pos[k].y, ceiling - _size[k].y); } }   // a tall roof near the top edge
-            MarkerLayout.Separate(_pos, _dist, _size, full, t.NudgeGap * factor, ceiling);
-            for (int k = 0; k < full; k++) { if (_slot[k] >= 0) { _markers[_slot[k]].Ui.SetPosition(_pos[k] / factor); } }
+
+            float ceiling = screen.y - top;   // under the HUD strip
+            for (int k = 0; k < placed; k++) { if (_slot[k] >= 0) { _pos[k].y = Mathf.Min(_pos[k].y, ceiling - _size[k].y); } }   // a box that would poke into the strip
+            MarkerLayout.Separate(_pos, _dist, _size, placed, t.NudgeGap * factor, ceiling);
+            for (int k = 0; k < placed; k++)
+            {
+                if (_slot[k] < 0) { continue; }
+                BuildingMarkerUI ui = _markers[_slot[k]].Ui;
+                ui.SetPosition(_pos[k] / factor);
+                // nudged far from its building: a thin line leads back to the anchor
+                float moved = (_pos[k].y - _anchor[k].y) / factor;
+                Vector2 toAnchor = (_anchor[k] - _pos[k]) / (factor * Mathf.Max(0.01f, _scale[k]));
+                ui.SetLeader(moved > t.LeaderMinPixels ? toAnchor : Vector2.zero);
+            }
         }
     }
 }
