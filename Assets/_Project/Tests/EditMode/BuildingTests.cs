@@ -364,6 +364,34 @@ namespace PowerCutCrew.Tests.EditMode
         }
 
         [Test]
+        public void EveryReadabilityKeyExistsInBothLanguages_AndTheWordsAreArabicInArabic()
+        {
+            string[] formats = { "bld.spike_format", "help.binding" };
+            string[] words =
+            {
+                "help.legend.quiet", "help.legend.powered", "help.legend.unpowered", "help.legend.angry",
+                "help.act.move", "help.act.look", "help.act.jump", "help.act.sprint", "help.act.crouch",
+                "help.act.interact", "help.act.grab", "help.act.usehit", "help.act.drop", "help.act.help",
+                "help.mouse", "help.hint", "help.hint_hide", "help.hint_show", "help.card.title", "help.card.close",
+                "tip.plug", "tip.unpowered", "tip.fuel", "tip.overheat",
+            };
+            foreach (string locale in new[] { "en", "ar" })
+            {
+                var table = Table(locale);
+                foreach (string key in formats) { Assert.IsTrue(table.GetEntry(key).Value.Contains("{0}"), $"{key} needs {{0}} in {locale}"); }
+                foreach (string key in words)
+                {
+                    Assert.IsNotNull(table.GetEntry(key), $"{key} missing in {locale}");
+                    Assert.IsNotEmpty(table.GetEntry(key).Value, $"{key} empty in {locale}");
+                }
+            }
+            var ar = Table("ar");
+            foreach (string key in words) { Assert.IsTrue(HasArabic(ar.GetEntry(key).Value), $"{key} should be Arabic"); }
+            Assert.IsTrue(Table("en").GetEntry("tip.plug").Value.Contains("{0}"), "the plug tip names the Grab key");
+            Assert.IsTrue(ar.GetEntry("tip.plug").Value.Contains("{0}"));
+        }
+
+        [Test]
         public void FourNeighborLinesPerTrigger_InBothLanguages_AllDifferent()
         {
             foreach (string locale in new[] { "en", "ar" })

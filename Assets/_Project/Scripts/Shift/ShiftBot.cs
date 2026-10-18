@@ -15,6 +15,7 @@ namespace PowerCutCrew.Shift
     {
         private readonly bool _autostart = LaunchArgs.Has("-autostart");
         private readonly int _shifts = LaunchArgs.Has("-shifts") ? int.Parse(LaunchArgs.Get("-shifts"), System.Globalization.CultureInfo.InvariantCulture) : 1;
+        private readonly float _lobbyWait = LaunchArgs.Has("-lobbywait") ? float.Parse(LaunchArgs.Get("-lobbywait"), System.Globalization.CultureInfo.InvariantCulture) : 4f;
         private float _wait;
         private int _summariesSeen;
         private ShiftState _lastState = (ShiftState)255;
@@ -101,7 +102,7 @@ namespace PowerCutCrew.Shift
             if (!_autostart || state != ShiftState.Lobby) { return false; }
 
             _wait += dt;
-            if (_wait < 4f) { return false; }   // let the others arrive and the generator get going
+            if (_wait < _lobbyWait) { return false; }   // let the others arrive and the generator get going
             ShiftClipboard clipboard = Object.FindFirstObjectByType<ShiftClipboard>();
             if (clipboard == null) { return false; }
             Vector3 stand = clipboard.transform.position + (me.transform.position - clipboard.transform.position).normalized * 1.3f;

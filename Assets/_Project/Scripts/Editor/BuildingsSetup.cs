@@ -16,7 +16,7 @@ using UnityEngine.UI;
 namespace PowerCutCrew.Editor
 {
     /// <summary>Builds the Prompt 05 content: tuning assets, strings, the Building prefab (marker, bubble, windows), the shift HUD and summary, the shift manager with its clipboard. Re-runnable.</summary>
-    public static class BuildingsSetup
+    public static partial class BuildingsSetup
     {
         private const string Root = "Assets/_Project";
         private static readonly Color Cream = new Color32(0xFF, 0xF4, 0xDC, 0xFF);
@@ -33,11 +33,15 @@ namespace PowerCutCrew.Editor
 
             LoadOrCreate<BuildingTuning>($"{Root}/Config/Resources/BuildingTuning.asset");
             LoadOrCreate<ShiftTuning>($"{Root}/Config/Resources/ShiftTuning.asset");
+            LoadOrCreate<HelpTuning>($"{Root}/Config/Resources/HelpTuning.asset");
             CreateStrings();
+            CreateReadabilityStrings();
+            GenerateIcons();
             PatchStreams();
 
             GameObject hud = SavePrefab(BuildHud(), "ShiftHud");
-            GameObject building = SavePrefab(BuildBuilding(), "Building");
+            GameObject markerUi = SavePrefab(BuildMarkerUi(), "BuildingMarkerUI");
+            GameObject building = SavePrefab(BuildBuilding(markerUi.GetComponent<BuildingMarkerUI>()), "Building");
             GameObject manager = SavePrefab(BuildShiftManager(hud.GetComponent<ShiftHud>()), "ShiftManager");
 
             var catalog = LoadOrCreate<BuildingsCatalog>($"{Root}/Config/Resources/BuildingsCatalog.asset");
@@ -174,7 +178,7 @@ namespace PowerCutCrew.Editor
 
         // ---------- the building ----------
 
-        private static GameObject BuildBuilding()
+        private static GameObject BuildBuilding(BuildingMarkerUI markerUi)
         {
             var root = new GameObject("Building");
             Material wall = Mat("Building", new Color(0.55f, 0.55f, 0.6f));
@@ -195,56 +199,14 @@ namespace PowerCutCrew.Editor
                 }
             }
 
-            // marker above the roof
-            var markerRoot = new GameObject("MarkerRoot", typeof(RectTransform));
+            // the world anchor of the screen-space marker: above the roof, on its front edge (BuildingNet places it by the building's height)
+            var markerRoot = new GameObject("MarkerAnchor");
             markerRoot.transform.SetParent(root.transform, false);
-            markerRoot.transform.localPosition = new Vector3(0f, 5.6f, 0f);
-            var markerCanvas = markerRoot.AddComponent<Canvas>();
-            markerCanvas.renderMode = RenderMode.WorldSpace;
-            var mrt = (RectTransform)markerRoot.transform;
-            mrt.sizeDelta = new Vector2(320f, 200f);
-            mrt.localScale = Vector3.one * 0.01f;
-            Image panel = Panel("Panel", mrt, BuildingMarker.QuietColor);
-            ContentSetup.Stretch(panel.rectTransform);
-            TextMeshProUGUI status = Plain("Status", mrt, "z", 78f, new Color(0.05f, 0.07f, 0.16f));
-            Place(status.rectTransform, -105f, 25f, 110f, 110f);
-            RTLTextMeshPro amps = ContentSetup.MakeText("Amps", mrt, "bld.amps_format", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 72f, new Color(0.05f, 0.07f, 0.16f));
-            Place((RectTransform)amps.transform, 40f, 25f, 190f, 100f);
-            RTLTextMeshPro nameText = ContentSetup.MakeText("Name", mrt, "bld.name.0", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 32f, new Color(0.05f, 0.07f, 0.16f));
-            Place((RectTransform)nameText.transform, 0f, -62f, 300f, 50f);
-            TextMeshProUGUI spike = Plain("Spike", mrt, "x1.5", 44f, new Color(0.05f, 0.07f, 0.16f));
-            Place(spike.rectTransform, 105f, 78f, 100f, 50f);
-            spike.gameObject.SetActive(false);
+            markerRoot.transform.localPosition = new Vector3(0f, 5.2f, -2f);
             var marker = markerRoot.AddComponent<BuildingMarker>();
-            Set(marker, "_panel", panel);
-            Set(marker, "_status", status);
-            Set(marker, "_amps", Loc(amps));
-            Set(marker, "_name", Loc(nameText));
-            Set(marker, "_spike", spike);
-
-            // speech bubble above the marker
-            var bubbleRoot = new GameObject("BubbleRoot", typeof(RectTransform));
-            bubbleRoot.transform.SetParent(root.transform, false);
-            bubbleRoot.transform.localPosition = new Vector3(0f, 7.4f, 0f);
-            var bubbleCanvas = bubbleRoot.AddComponent<Canvas>();
-            bubbleCanvas.renderMode = RenderMode.WorldSpace;
-            var brt = (RectTransform)bubbleRoot.transform;
-            brt.sizeDelta = new Vector2(520f, 150f);
-            brt.localScale = Vector3.one * 0.01f;
-            var bubble = new GameObject("Bubble", typeof(RectTransform));
-            bubble.transform.SetParent(brt, false);
-            ContentSetup.Stretch((RectTransform)bubble.transform);
-            Image bg = Panel("Background", bubble.transform, new Color(1f, 0.97f, 0.9f, 0.96f));
-            ContentSetup.Stretch(bg.rectTransform);
-            RTLTextMeshPro line = ContentSetup.MakeText("Line", bubble.transform, "bld.line.request.0", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 38f, new Color(0.08f, 0.09f, 0.16f));
-            line.textWrappingMode = TextWrappingModes.Normal;
-            ContentSetup.Stretch((RectTransform)line.transform);
-            ((RectTransform)line.transform).offsetMin = new Vector2(16f, 8f);
-            ((RectTransform)line.transform).offsetMax = new Vector2(-16f, -8f);
-            bubble.SetActive(false);
-            var bubbleScript = bubbleRoot.AddComponent<BuildingBubble>();
-            Set(bubbleScript, "_root", bubble);
-            Set(bubbleScript, "_text", Loc(line));
+            Set(marker, "_uiPrefab", markerUi);
+            var bubbleScript = markerRoot.AddComponent<BuildingBubble>();
+            Set(bubbleScript, "_marker", marker);
 
             root.AddComponent<NetworkObject>();
             var net = root.AddComponent<BuildingNet>();
@@ -255,7 +217,6 @@ namespace PowerCutCrew.Editor
             Set(net, "_windowDark", dark);
             Set(net, "_body", body.transform);
             Set(net, "_markerRoot", markerRoot.transform);
-            Set(net, "_bubbleRoot", bubbleRoot.transform);
             return root;
         }
 
@@ -351,6 +312,7 @@ namespace PowerCutCrew.Editor
             Set(hud, "_waiting", waiting.gameObject);
             Set(hud, "_againButton", again);
             Set(hud, "_menuButton", menu);
+            AddHelp(root, crt);
             return root;
         }
 

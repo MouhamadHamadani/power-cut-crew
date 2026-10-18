@@ -174,6 +174,15 @@ namespace PowerCutCrew.Core
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Help"",
+                    ""type"": ""Button"",
+                    ""id"": ""9405195e-9735-4c70-98b5-4062819f2289"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -416,6 +425,28 @@ namespace PowerCutCrew.Core
                     ""processors"": """",
                     ""groups"": ""Gamepad"",
                     ""action"": ""Drop"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""bd2cf324-60d5-4079-905f-d515cad31d89"",
+                    ""path"": ""<Keyboard>/h"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""Help"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""5408681d-97fe-45f8-99e4-88f2e0b1e02c"",
+                    ""path"": ""<Gamepad>/select"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Gamepad"",
+                    ""action"": ""Help"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -825,6 +856,7 @@ namespace PowerCutCrew.Core
             m_Player_Grab = m_Player.FindAction("Grab", throwIfNotFound: true);
             m_Player_UseHit = m_Player.FindAction("UseHit", throwIfNotFound: true);
             m_Player_Drop = m_Player.FindAction("Drop", throwIfNotFound: true);
+            m_Player_Help = m_Player.FindAction("Help", throwIfNotFound: true);
             // UI
             m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
             m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
@@ -927,6 +959,7 @@ namespace PowerCutCrew.Core
         private readonly InputAction m_Player_Grab;
         private readonly InputAction m_Player_UseHit;
         private readonly InputAction m_Player_Drop;
+        private readonly InputAction m_Player_Help;
         /// <summary>
         /// Provides access to input actions defined in input action map "Player".
         /// </summary>
@@ -974,6 +1007,10 @@ namespace PowerCutCrew.Core
             /// Provides access to the underlying input action "Player/Drop".
             /// </summary>
             public InputAction @Drop => m_Wrapper.m_Player_Drop;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/Help".
+            /// </summary>
+            public InputAction @Help => m_Wrapper.m_Player_Help;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -1027,6 +1064,9 @@ namespace PowerCutCrew.Core
                 @Drop.started += instance.OnDrop;
                 @Drop.performed += instance.OnDrop;
                 @Drop.canceled += instance.OnDrop;
+                @Help.started += instance.OnHelp;
+                @Help.performed += instance.OnHelp;
+                @Help.canceled += instance.OnHelp;
             }
 
             /// <summary>
@@ -1065,6 +1105,9 @@ namespace PowerCutCrew.Core
                 @Drop.started -= instance.OnDrop;
                 @Drop.performed -= instance.OnDrop;
                 @Drop.canceled -= instance.OnDrop;
+                @Help.started -= instance.OnHelp;
+                @Help.performed -= instance.OnHelp;
+                @Help.canceled -= instance.OnHelp;
             }
 
             /// <summary>
@@ -1389,6 +1432,13 @@ namespace PowerCutCrew.Core
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnDrop(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "Help" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnHelp(InputAction.CallbackContext context);
         }
         /// <summary>
         /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.

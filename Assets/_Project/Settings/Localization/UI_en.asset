@@ -316,6 +316,110 @@ MonoBehaviour:
     m_Localized: Never again! We're moving to the other street!
     m_Metadata:
       m_Items: []
+  - m_Id: 2219505386926080
+    m_Localized: "\xD7{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783680
+    m_Localized: Doesn't need power right now
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783681
+    m_Localized: Has power
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783682
+    m_Localized: Needs a cable now!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783683
+    m_Localized: 'Angry: stopped paying'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783684
+    m_Localized: Move
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783685
+    m_Localized: Look
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783686
+    m_Localized: Jump
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977984
+    m_Localized: Sprint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977985
+    m_Localized: Crouch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977986
+    m_Localized: Interact
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977987
+    m_Localized: Grab
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977988
+    m_Localized: Use / Hit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977989
+    m_Localized: Drop
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977990
+    m_Localized: This card
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977991
+    m_Localized: '{0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977992
+    m_Localized: Mouse
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977993
+    m_Localized: '{0}: controls'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977994
+    m_Localized: Hide the corner hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977995
+    m_Localized: Show the corner hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977996
+    m_Localized: Controls
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977997
+    m_Localized: '{0}: close'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977998
+    m_Localized: '{0}: grab the plug and carry it to a flashing building'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977999
+    m_Localized: A building is in the dark! Plug a cable into its socket
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495978000
+    m_Localized: 'Fuel is low: fill the tank from a jerrycan or the drum'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495978001
+    m_Localized: 'The generator is overheating: unplug a cable to let it cool'
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

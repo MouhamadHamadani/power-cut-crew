@@ -56,6 +56,29 @@ namespace PowerCutCrew.Buildings
         public float UnpoweredLineSeconds = 10f;
         public float BubbleSeconds = 3f;
 
+        [Header("Screen-space markers")]
+        [Tooltip("The marker anchor floats this high above the roof (m).")]
+        public float MarkerAnchorAboveRoof = 1.2f;
+        [Tooltip("The anchor sits this far in from the middle towards the front edge of the roof (m); the buildings are 4 m deep.")]
+        public float MarkerAnchorFront = 2f;
+        [Tooltip("Full size within this distance (m).")]
+        public float NearDistance = 14f;
+        [Tooltip("The marker has shrunk to FarScale at this distance (m) and stays there beyond it.")]
+        public float FarDistance = 55f;
+        [Range(0.3f, 1f)] public float FarScale = 0.85f;
+        [Tooltip("Quiet buildings are drawn this transparent, so the eye goes to the ones that need power.")]
+        [Range(0.1f, 1f)] public float QuietAlpha = 0.75f;
+        [Tooltip("Reference pixels kept free along every screen edge; a building closer to the edge than this counts as off screen.")]
+        public float ScreenMargin = 70f;
+        [Tooltip("Off-screen icons sit this much further in from the edge (reference pixels), so their arrow stays on screen.")]
+        public float CompactInset = 90f;
+        [Tooltip("Reference pixels kept free along the top edge for the HUD strip.")]
+        public float TopReserved = 110f;
+        [Tooltip("Gap (reference pixels) between two markers that were pushed apart.")]
+        public float NudgeGap = 8f;
+        [Tooltip("Speed of the flashing of an Unpowered marker.")]
+        public float FlashSpeed = 12f;
+
         [Header("Network")]
         public float SyncRateHz = 4f;
 

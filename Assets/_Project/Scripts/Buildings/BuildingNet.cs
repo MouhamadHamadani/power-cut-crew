@@ -30,8 +30,8 @@ namespace PowerCutCrew.Buildings
         [SerializeField] private Material _windowDark;
         [Header("Layout (the height comes from the tuning entry)")]
         [SerializeField] private Transform _body;
+        [Tooltip("The world anchor of the screen-space marker and bubble (the marker UI follows it).")]
         [SerializeField] private Transform _markerRoot;
-        [SerializeField] private Transform _bubbleRoot;
         [SerializeField] private int _windowColumns = 3;
         [SerializeField] private float _windowRowSpacing = 1.5f;
 
@@ -135,8 +135,8 @@ namespace PowerCutCrew.Buildings
                     _windows[i].transform.localPosition = new Vector3(p.x, 0.8f + row * _windowRowSpacing, p.z);
                 }
             }
-            if (_markerRoot != null) { _markerRoot.localPosition = new Vector3(0f, height + 1.6f, 0f); }
-            if (_bubbleRoot != null) { _bubbleRoot.localPosition = new Vector3(0f, height + 3.4f, 0f); }
+            BuildingTuning t = BuildingTuning.Instance;
+            if (_markerRoot != null) { _markerRoot.localPosition = new Vector3(0f, height + t.MarkerAnchorAboveRoof, -t.MarkerAnchorFront); }   // the front edge of the roof
         }
 
         public override void OnNetworkDespawn()

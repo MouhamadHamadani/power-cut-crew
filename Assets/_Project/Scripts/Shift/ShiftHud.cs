@@ -69,6 +69,8 @@ namespace PowerCutCrew.Shift
             _ambientModeDay = RenderSettings.ambientMode;
             _summaryRoot.SetActive(false);
             _countdown.gameObject.SetActive(false);
+            var help = GetComponent<HelpHud>();
+            if (help != null) { help.Bind(shift); }
         }
 
         private static Light FindSun()

@@ -93,11 +93,21 @@ Systems:
 | Buildings / subscribers | Demand windows, subscription amps, spikes, happiness, Angry, payment | Built (Prompt 05). 4 buildings: 5 + 5 + 5 + 10 A |
 | Fuel | Jerrycans, fuel drum; spills and fire later | Jerrycans + drum built; spills/fire not yet |
 | Shift timer + score | Lobby → Countdown → Running → Summary, uptime, money, Angry count | Built (Prompt 05) |
-| Readability | Building markers, status icons, legend, controls card, first-shift tips | Prompt 06 (next) |
+| Readability | Screen-space building markers, status icons, legend, controls card, first-shift tips | Built (Prompt 06) |
 | Breakdowns | Typed failures with a physical fix (3 types) | Prompt 07 |
 | Economy / upgrades | Host buys upgrades between shifts; per-cable ratings | Prompt 08 |
 | Events | Football final, wedding, heatwave, hospital, rival crew sabotage | Later |
 | Voice | Proximity voice chat | Later, optional |
+
+### UI and readability (Prompt 06)
+
+- **Building markers** are screen-space, not world-space: one overlay canvas, one marker per building that follows a world anchor (1.2 m above the roof, at its front edge). Nothing covers them and the size barely changes with distance (full size within 14 m, 85 % at 55 m).
+  Each marker shows a status icon, the amps wanted (and the spike badge) and the building name; the speech bubble stacks directly above its marker; when two markers overlap the farther one is pushed up. Quiet buildings are faded so the eye goes to the ones that need power.
+- **Off screen:** a building that needs power (Unpowered) or is Angry sticks to the screen edge as a compact icon with an arrow towards it; Quiet and Powered buildings hide.
+- **Icons instead of glyphs:** a moon (Quiet, grey), a lit bulb (Powered, lamp yellow), a flashing lightning bolt (Unpowered, spark red), an angry face (Angry, purple). Drawn by an editor script, no external assets.
+- **Help:** a legend of the four icons in the lobby and countdown; a controls card on `H` (gamepad Select) that lists the actions with their current bindings (read from the Input System) and the legend, with a button to hide the corner hint "H: controls";
+  first-shift tips, local to each player and each shown once per session: grab a free plug, a building in the dark, low fuel, a hot generator.
+- **Arabic:** the card, the legend and the corner hint mirror (rows and icons on the right, hint in the bottom right). Key names (E, Space, LMB) come from Unity's Input System and are not translated. RTLTMPro only shapes a string whose first letter is Arabic, so Arabic strings that carry a key name start with the Arabic words.
 
 ### Breakdowns (Prompt 07, MVP: 3 types)
 
@@ -194,7 +204,7 @@ The loop:
 | 01–03 | Project setup, net foundation (sessions, Steam lobbies, players, grabbable items, bots, metrics), core content | Done |
 | 04 | Core loop: generator, fuel, physics cables, sockets | Done |
 | 05 | Buildings, shift, neighbors, HUD, summary; plug pop-out fix | Done (Oct 17): 128 EditMode + 13 PlayMode tests green, host + 3 bots on `bad` clean |
-| 06 | Readability: screen-space building markers, status icons, legend, controls card, first-shift tips | Next (`docs/prompts/prompt-06-readability.md`) |
+| 06 | Readability: screen-space building markers, status icons, legend, controls card, first-shift tips | Done (Oct 18): see `docs/prompts/prompt-06-readability.md` |
 | 07 | Breakdowns (3 types) | Planned |
 | 08 | Upgrades between shifts + per-cable ratings and melting | Planned |
 

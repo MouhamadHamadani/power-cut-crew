@@ -54,3 +54,6 @@ The Steamworks.NET package bundles Valve's `steam_api64.dll`; Steam test App ID 
 Shipping on Steam needs a real App ID (one-time Steam Direct fee per game), which is outside the zero-cost rule and is not part of this prompt.
 
 Prompt 04 (core loop: generator, fuel, cables) added **no packages**. The cable is our own ConfigurableJoint chain (no rope asset), all meshes are grey-box primitives, no new fonts.
+
+Prompt 06 (readability) added **no packages and no downloaded assets**. The five status icons (moon, bulb, lightning bolt, angry face, arrow) are plain shapes drawn by `BuildingsSetup.GenerateIcons`
+(`Assets/_Project/Art/Icons/status_*.png`, white on transparent, tinted in the UI); they are ours and need no attribution. No emoji font is used. Key names in the controls card come from Unity's Input System.

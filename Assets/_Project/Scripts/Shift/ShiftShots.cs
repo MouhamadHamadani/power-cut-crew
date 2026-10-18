@@ -8,8 +8,9 @@ using UnityEngine.Localization.Settings;
 namespace PowerCutCrew.Shift
 {
     /// <summary>
-    /// Development tool for the docs (-shot shift -shotdir &lt;dir&gt;, on a bot client with graphics): the HUD while the shift runs, a building
-    /// with a speech bubble (a temporary photo camera in front of it) and the summary screen, each in English and Arabic.
+    /// Development tool for the docs (-shot shift -shotdir &lt;dir&gt;, on a bot client with graphics), each shot in English and Arabic: the lobby legend, the HUD while the shift
+    /// runs, the building markers from beside the tallest building, from mid-street and from the far end, a building out of view (edge arrow), a speech bubble, the controls
+    /// card and the summary. A temporary photo camera is put where the shot needs it and the markers are projected through it.
     /// </summary>
     public class ShiftShots : MonoBehaviour
     {
@@ -33,13 +34,26 @@ namespace PowerCutCrew.Shift
             _cam = new GameObject("PhotoCam").AddComponent<Camera>();
             _cam.transform.SetParent(transform);
             _cam.depth = 50;
-            _cam.fieldOfView = 50f;
+            _cam.fieldOfView = 60f;
             _cam.enabled = false;
-            BuildingBubble.CameraOverride = _cam;   // markers and bubbles are sized for the photo camera, not for the bot's eyes
+            MarkerOverlay.CameraOverride = _cam;   // the markers are projected through the photo camera, not through the bot's eyes
 
-            bool hud = false, bubble = false, summary = false;
+            // the lobby legend, while the bots are still walking to the clipboard
+            float nextLog = 0f;
+            while (ShiftNet.Instance == null || ShiftNet.Instance.State != ShiftState.Lobby || HelpHud.Instance == null)
+            {
+                if (Time.realtimeSinceStartup > nextLog)
+                {
+                    nextLog = Time.realtimeSinceStartup + 5f;
+                    Debug.Log($"[Shots] waiting for the lobby: shift {(ShiftNet.Instance != null ? ShiftNet.Instance.State.ToString() : "none")}, help {(HelpHud.Instance != null ? "bound" : "none")}");
+                }
+                yield return null;
+            }
+            yield return Both("lobby_legend");
+
+            bool done = false, bubble = false, hud = false;
             float runningSince = -1f;
-            while (!summary)
+            while (!done)
             {
                 ShiftNet shift = ShiftNet.Instance;
                 if (shift != null && shift.State == ShiftState.Running)
@@ -58,34 +72,101 @@ namespace PowerCutCrew.Shift
                         foreach (BuildingNet b in BuildingNet.All)
                         {
                             if (b == null || !b.IsSpawned || !b.HasBubble || b.BubbleSecondsLeft < 2.4f) { continue; }
-                            // the buildings stand on the far side of the sockets, which face the generator at the origin
-                            Vector3 flat = new Vector3(b.transform.position.x, 0f, b.transform.position.z);
-                            Vector3 toGen = flat.sqrMagnitude > 0.01f ? -flat.normalized : Vector3.back;
-                            Vector3 at = flat + Vector3.up * 5.5f;   // the marker and the bubble float above the roof
-                            Place(flat + toGen * 12f + Vector3.up * 5f, at);
-                            _cam.enabled = true;
                             bubble = true;
+                            Vector3 flat = Flat(b.transform.position);
+                            Place(flat + ToGenerator(flat) * 14f + Vector3.up * 3f, flat + Vector3.up * (b.Entry.HeightMeters + 1.6f), 55f);
+                            _cam.enabled = true;
                             yield return Both("building_bubble");
                             _cam.enabled = false;
                             break;
                         }
                     }
+                    float running = Time.time - runningSince;
+                    if (hud && bubble && ((running > 14f && UrgentBuilding() != null) || running > 70f))   // a building that needs power makes the edge-arrow shot
+                    {
+                        yield return MarkerShots();
+                        done = true;
+                    }
                 }
-                if (shift != null && shift.State == ShiftState.Summary) { summary = true; }
+                if (shift != null && shift.State == ShiftState.Summary) { done = true; }
                 yield return null;
             }
+
+            // the summary
+            while (ShiftNet.Instance != null && ShiftNet.Instance.State != ShiftState.Summary) { yield return null; }
             yield return new WaitForSeconds(1.5f);
             Aerial();
             _cam.enabled = true;
             yield return Both("shift_summary");
-            Debug.Log($"[Shots] shift screenshots done (hud {hud}, bubble {bubble})");
+            Debug.Log("[Shots] shift screenshots done");
             Application.Quit();
         }
 
-        private void Place(Vector3 position, Vector3 lookAt)
+        /// <summary>Beside the tallest building, mid-street, the far end, one building out of view, the controls card.</summary>
+        private IEnumerator MarkerShots()
+        {
+            BuildingNet tallest = null;
+            Vector3 centre = Vector3.zero;
+            int n = 0;
+            foreach (BuildingNet b in BuildingNet.All)
+            {
+                if (b == null || !b.IsSpawned) { continue; }
+                centre += Flat(b.transform.position);
+                n++;
+                if (tallest == null || b.Entry.HeightMeters > tallest.Entry.HeightMeters) { tallest = b; }
+            }
+            if (n == 0) { yield break; }
+            centre /= n;
+
+            // standing next to the tallest building, looking up at its roof
+            Vector3 flat = Flat(tallest.transform.position);
+            float roof = tallest.Entry.HeightMeters + 1.4f;
+            Place(flat + ToGenerator(flat) * 6f + Vector3.up * 1.7f, flat + Vector3.up * (roof - 1.2f), 70f);
+            _cam.enabled = true;
+            yield return Both("markers_tall_up");
+
+            // mid-street (about 25 m from the middle of the buildings) and the far end (about 55 m), looking along the street
+            Vector3 back = centre.sqrMagnitude > 1f ? -centre.normalized : Vector3.back;
+            Vector3 eye = Vector3.up * 1.7f;
+            Place(centre + back * 25f + eye, centre + Vector3.up * 3f, 60f);
+            yield return Both("markers_mid_street");
+            Place(centre + back * 55f + eye, centre + Vector3.up * 3f, 60f);
+            yield return Both("markers_far_end");
+
+            // a building out of view: stand in the middle and look away from a building that needs power
+            BuildingNet urgent = UrgentBuilding() ?? tallest;
+            Vector3 u = Flat(urgent.transform.position);
+            Vector3 away = u.sqrMagnitude > 1f ? -u.normalized : Vector3.back;
+            Place(Vector3.up * 4f, Vector3.up * 3f + away * 20f, 55f);   // above the generator, looking away from the building that needs power
+            yield return Both("marker_offscreen");
+            _cam.enabled = false;
+
+            // the controls card
+            HelpHud.Instance.SetCardOpen(true);
+            yield return new WaitForSeconds(0.5f);
+            yield return Both("controls_card");
+            HelpHud.Instance.SetCardOpen(false);
+        }
+
+        private static BuildingNet UrgentBuilding()
+        {
+            foreach (BuildingNet b in BuildingNet.All)
+            {
+                if (b != null && b.IsSpawned && (b.Marker == MarkerState.Unpowered || b.Marker == MarkerState.Angry)) { return b; }
+            }
+            return null;
+        }
+
+        private static Vector3 Flat(Vector3 p) => new Vector3(p.x, 0f, p.z);
+
+        /// <summary>From a street position back towards the generator at the origin.</summary>
+        private static Vector3 ToGenerator(Vector3 flat) => flat.sqrMagnitude > 0.01f ? -flat.normalized : Vector3.back;
+
+        private void Place(Vector3 position, Vector3 lookAt, float fov)
         {
             _cam.transform.position = position;
             _cam.transform.rotation = Quaternion.LookRotation(lookAt - position, Vector3.up);
+            _cam.fieldOfView = fov;
         }
 
         /// <summary>The whole street from above and behind the generator.</summary>
@@ -97,7 +178,7 @@ namespace PowerCutCrew.Shift
             if (n > 0) { center /= n; }
             center.y = 0f;
             Vector3 back = center.sqrMagnitude > 0.01f ? -center.normalized : Vector3.back;
-            Place(back * 12f + Vector3.up * 14f, center + Vector3.up * 1f);
+            Place(back * 12f + Vector3.up * 14f, center + Vector3.up * 1f, 60f);
         }
 
         private IEnumerator Both(string name)
@@ -105,7 +186,7 @@ namespace PowerCutCrew.Shift
             foreach (string code in new[] { "en", "ar" })
             {
                 LocalizationSettings.SelectedLocale = LocalizationSettings.AvailableLocales.GetLocale(code);
-                yield return new WaitForSeconds(0.5f);
+                yield return new WaitForSeconds(0.6f);
                 yield return new WaitForEndOfFrame();
                 ScreenCapture.CaptureScreenshot(Path.Combine(_dir, $"{name}_{code}.png"));
                 yield return new WaitForSeconds(0.3f);

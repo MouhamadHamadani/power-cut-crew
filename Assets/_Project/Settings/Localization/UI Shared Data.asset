@@ -311,6 +311,110 @@ MonoBehaviour:
     m_Key: bld.line.angry.3
     m_Metadata:
       m_Items: []
+  - m_Id: 2219505386926080
+    m_Key: bld.spike_format
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783680
+    m_Key: help.legend.quiet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783681
+    m_Key: help.legend.powered
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783682
+    m_Key: help.legend.unpowered
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783683
+    m_Key: help.legend.angry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783684
+    m_Key: help.act.move
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783685
+    m_Key: help.act.look
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505491783686
+    m_Key: help.act.jump
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977984
+    m_Key: help.act.sprint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977985
+    m_Key: help.act.crouch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977986
+    m_Key: help.act.interact
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977987
+    m_Key: help.act.grab
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977988
+    m_Key: help.act.usehit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977989
+    m_Key: help.act.drop
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977990
+    m_Key: help.act.help
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977991
+    m_Key: help.binding
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977992
+    m_Key: help.mouse
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977993
+    m_Key: help.hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977994
+    m_Key: help.hint_hide
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977995
+    m_Key: help.hint_show
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977996
+    m_Key: help.card.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977997
+    m_Key: help.card.close
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977998
+    m_Key: tip.plug
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495977999
+    m_Key: tip.unpowered
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495978000
+    m_Key: tip.fuel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2219505495978001
+    m_Key: tip.overheat
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
