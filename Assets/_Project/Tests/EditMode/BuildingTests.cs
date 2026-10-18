@@ -387,8 +387,11 @@ namespace PowerCutCrew.Tests.EditMode
             }
             var ar = Table("ar");
             foreach (string key in words) { Assert.IsTrue(HasArabic(ar.GetEntry(key).Value), $"{key} should be Arabic"); }
-            Assert.IsTrue(Table("en").GetEntry("tip.plug").Value.Contains("{0}"), "the plug tip names the Grab key");
-            Assert.IsTrue(ar.GetEntry("tip.plug").Value.Contains("{0}"));
+            // the key names are added by RtlBinding, not written into the strings (Arabic strings must start with Arabic letters)
+            foreach (string locale in new[] { "en", "ar" })
+            {
+                foreach (string key in words) { Assert.IsFalse(Table(locale).GetEntry(key).Value.Contains("{0}"), $"{key} in {locale} should not carry a placeholder"); }
+            }
         }
 
         [Test]

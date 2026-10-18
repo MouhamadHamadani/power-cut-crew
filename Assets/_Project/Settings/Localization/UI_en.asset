@@ -385,7 +385,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 2219505495977993
-    m_Localized: '{0}: controls'
+    m_Localized: controls
     m_Metadata:
       m_Items: []
   - m_Id: 2219505495977994
@@ -401,11 +401,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 2219505495977997
-    m_Localized: '{0}: close'
+    m_Localized: close
     m_Metadata:
       m_Items: []
   - m_Id: 2219505495977998
-    m_Localized: '{0}: grab the plug and carry it to a flashing building'
+    m_Localized: grab the plug and carry it to a flashing building
     m_Metadata:
       m_Items: []
   - m_Id: 2219505495977999

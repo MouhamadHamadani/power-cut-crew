@@ -103,11 +103,13 @@ Systems:
 
 - **Building markers** are screen-space, not world-space: one overlay canvas, one marker per building that follows a world anchor (1.2 m above the roof, at its front edge). Nothing covers them and the size barely changes with distance (full size within 14 m, 85 % at 55 m).
   Each marker shows a status icon, the amps wanted (and the spike badge) and the building name; the speech bubble stacks directly above its marker; when two markers overlap the farther one is pushed up. Quiet buildings are faded so the eye goes to the ones that need power.
-- **Off screen:** a building that needs power (Unpowered) or is Angry sticks to the screen edge as a compact icon with an arrow towards it; Quiet and Powered buildings hide.
+- **Off screen:** a building that needs power (Unpowered) or is Angry sticks to the screen edge as a compact icon with an arrow towards it; Quiet and Powered buildings hide. A building behind you lands on the bottom edge (or the nearer side) pointing that way, never at the top;
+  the icons and their arrows stay out of the HUD strip, the tip panel and the interaction prompt.
+- **Far away:** beyond 40 m a marker is compact (icon and amps, half the width) and a Quiet building is only a small dot. Overlapping markers are pushed up (never below their building) and a marker that was nudged far gets a thin leader line to its building.
 - **Icons instead of glyphs:** a moon (Quiet, grey), a lit bulb (Powered, lamp yellow), a flashing lightning bolt (Unpowered, spark red), an angry face (Angry, purple). Drawn by an editor script, no external assets.
 - **Help:** a legend of the four icons in the lobby and countdown; a controls card on `H` (gamepad Select) that lists the actions with their current bindings (read from the Input System) and the legend, with a button to hide the corner hint "H: controls";
   first-shift tips, local to each player and each shown once per session: grab a free plug, a building in the dark, low fuel, a hot generator.
-- **Arabic:** the card, the legend and the corner hint mirror (rows and icons on the right, hint in the bottom right). Key names (E, Space, LMB) come from Unity's Input System and are not translated. RTLTMPro only shapes a string whose first letter is Arabic, so Arabic strings that carry a key name start with the Arabic words.
+- **Arabic:** the UI is MSA (neighbor lines and building names stay in dialect). Numbers use Arabic-Indic digits everywhere. `RtlBinding.Compose` puts a key name next to a text so the Arabic text comes first (the key ends up on the left end of the line); the card, the legend and the corner hint mirror (rows and icons on the right, hint in the bottom right). Key names (E, Space, LMB) come from Unity's Input System and are not translated. RTLTMPro only shapes a string whose first letter is Arabic, so Arabic strings that carry a key name start with the Arabic words.
 
 ### Breakdowns (Prompt 07, MVP: 3 types)
 

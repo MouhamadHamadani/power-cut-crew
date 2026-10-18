@@ -114,6 +114,15 @@ namespace PowerCutCrew.Shift
         /// <summary>The display text of an action's bindings in one control scheme; a composite (Move) is spelled out part by part, up / left / down / right.</summary>
         private static string Display(InputAction a, string group)
         {
+            string text = DisplayRaw(a, group);
+            if (group != "Gamepad" || string.IsNullOrEmpty(text)) { return text; }
+            string[] parts = text.Split('/');
+            for (int i = 0; i < parts.Length; i++) { parts[i] = InputNames.ShortGamepad(parts[i].Trim()); }
+            return string.Join("/", parts);
+        }
+
+        private static string DisplayRaw(InputAction a, string group)
+        {
             string whole = a.GetBindingDisplayString(InputBinding.MaskByGroup(group));
             if (!string.IsNullOrEmpty(whole)) { return whole; }
             var parts = new string[4];
@@ -171,11 +180,11 @@ namespace PowerCutCrew.Shift
                 label.Refresh();
             }
             string helpKey = Display(actions[9], "Keyboard&Mouse");
-            _hint.Format = text => string.Format(CultureInfo.InvariantCulture, text, helpKey);
+            _hint.Format = text => RtlBinding.Compose(helpKey, text, BindingStyle.Colon);
             _hint.Refresh();
             if (_closeText != null)
             {
-                _closeText.Format = text => string.Format(CultureInfo.InvariantCulture, text, helpKey);
+                _closeText.Format = text => RtlBinding.Compose(helpKey, text, BindingStyle.Colon);
                 _closeText.Refresh();
             }
         }
@@ -225,7 +234,9 @@ namespace PowerCutCrew.Shift
             {
                 string grab = KeyboardAndGamepad(_controls.Player.Grab);
                 _tipText.SetKey(TipLogic.Key(started.Value));
-                _tipText.Format = text => string.Format(CultureInfo.InvariantCulture, text, grab);
+                // only the plug tip names a key; the others are plain sentences
+                if (started.Value == Tip.Plug) { _tipText.Format = text => RtlBinding.Compose(grab, text); }
+                else { _tipText.Format = null; }
                 _tipText.Refresh();
                 _tipShown = TipLogic.Key(started.Value);
             }

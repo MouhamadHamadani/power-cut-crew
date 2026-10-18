@@ -1,6 +1,7 @@
 using System.Collections;
 using System.IO;
 using PowerCutCrew.Buildings;
+using PowerCutCrew.Core;
 using PowerCutCrew.Net;
 using UnityEngine;
 using UnityEngine.Localization.Settings;
@@ -146,6 +147,24 @@ namespace PowerCutCrew.Shift
             yield return new WaitForSeconds(0.5f);
             yield return Both("controls_card");
             HelpHud.Instance.SetCardOpen(false);
+
+            // the interaction prompt (Arabic shaping): whenever the bot looks at something it can use
+            foreach (string code in new[] { "en", "ar" })
+            {
+                LocalizationSettings.SelectedLocale = LocalizationSettings.AvailableLocales.GetLocale(code);
+                // the bot has to look at the same thing for a moment, so that the label has shaped itself in this language
+                float waited = 0f, held = 0f;
+                while (held < 0.4f && waited < 90f)
+                {
+                    held = InteractionFocus.Current != null ? held + Time.deltaTime : 0f;
+                    waited += Time.deltaTime;
+                    yield return null;
+                }
+                yield return new WaitForEndOfFrame();
+                ScreenCapture.CaptureScreenshot(Path.Combine(_dir, $"interaction_prompt_{code}.png"));
+                yield return new WaitForSeconds(0.3f);
+            }
+            LocalizationSettings.SelectedLocale = LocalizationSettings.AvailableLocales.GetLocale("en");
         }
 
         private static BuildingNet UrgentBuilding()

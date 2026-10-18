@@ -240,4 +240,6 @@ After the fix S1 had 2 pop-outs (both a can) and 3 snaps (can, in reach, a playe
 | S3 | 0 errors. Shift 1: uptime 27.3 %, money 116, Angry 0; shift 2: 25.6 %, 88, Angry 2. After "Another shift": money 0, held items 0, bubbles 0, happiness 70 everywhere. Snaps 4, pop-outs 0. Host upload 106.9 / 282.6 |
 | S4 | all clients log "host left" and load `MainMenu`. No exceptions in any log |
 
+Since the follow-up (Prompt 06b) the heat and fuel tolerance is `base + |rate| x snapshotAge` (`VerifyTolerance`, numbers in `NetTuning`: heat 4, fuel 1.5, age 1 s; the host tracks the fastest recent change with `RateTracker`), so a value that is racing up is not reported against a report that is a second old. Other fields are compared as before.
+
 Two `-verify` mismatches showed up in the core-loop comparison (not in shift or building fields, and not on the late joiner): S2 generator heat 86 vs 90 on a client while the heat was climbing towards the overheat (tolerance 4), S3 a cable seen as Held on a client while the host had plugged it. Both are timing noise of the older comparison under `bad`; not changed.

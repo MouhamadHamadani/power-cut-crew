@@ -13,7 +13,7 @@ namespace PowerCutCrew.UI
 
         private void Awake()
         {
-            _label.Format = text => "[E] " + text;
+            _label.Format = text => RtlBinding.Compose("E", text);   // Arabic: the text first, so RTLTMPro shapes it
             _root.SetActive(false);
         }
 
