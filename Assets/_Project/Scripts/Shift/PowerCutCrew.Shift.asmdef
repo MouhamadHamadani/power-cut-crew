@@ -15,6 +15,7 @@
         "RTLTMPro",
         "PowerCutCrew.Buildings",
         "PowerCutCrew.Fuel",
+        "PowerCutCrew.Breakdowns",
         "Unity.ugui",
         "Unity.InputSystem"
     ],

@@ -99,7 +99,14 @@ namespace PowerCutCrew.Net
             UpdateHold(focus, f);
             if (f.Interact && focus != null && !focus.IsHold) { _net.RequestInteract(focus); }
             if (f.Drop) { _net.RequestDrop(); }
-            if (f.Throw) { _net.RequestThrow(_cameraTarget.forward + Vector3.up * 0.15f); }
+            if (f.Throw)
+            {
+                // a usable item (the wrench) is used with the throw button; everything else is thrown
+                NetworkPhysicsItem held = NetworkPhysicsItem.HeldByLocal();
+                IUsableItem usable = held != null ? held.GetComponent<IUsableItem>() : null;
+                if (usable == null) { _net.RequestThrow(_cameraTarget.forward + Vector3.up * 0.15f); }
+                else if (usable.BeginUse(_cameraTarget, out Component target, out Vector3 point)) { _net.RequestUse(held, target, point); }
+            }
         }
 
         /// <summary>"Hold E" interactions: begin when E goes down on a hold target, keep alive while it stays down, end when released or the target changes.</summary>

@@ -104,7 +104,8 @@ namespace PowerCutCrew.Editor
             _dotSprite = MakeIcon("status_dot", (x, y) => Dist(x, y, 64f, 64f) < 58f);
             float[] arrowPts = { 8f, 10f, 120f, 64f, 8f, 118f, 34f, 64f };
             _arrowSprite = MakeIcon("status_arrow", (x, y) => InPolygon(x, y, arrowPts));
-            _statusIcons = new[] { moon, bulb, bolt, angry };
+            Sprite[] breakdownIcons = MakeBreakdownIcons();
+            _statusIcons = new[] { moon, bulb, bolt, angry, breakdownIcons[0], breakdownIcons[1], breakdownIcons[2] };   // the four moods, then wrench, belt, breaker
         }
 
         // ---------- the marker on screen ----------
@@ -190,35 +191,47 @@ namespace PowerCutCrew.Editor
 
         // ---------- help: legend, controls card, hint, tips ----------
 
-        private static readonly Color[] LegendColors = { BuildingMarker.QuietColor, BuildingMarker.PoweredColor, BuildingMarker.UnpoweredColor, BuildingMarker.AngryColor };
-        private static readonly string[] LegendKeys = { "help.legend.quiet", "help.legend.powered", "help.legend.unpowered", "help.legend.angry" };
+        private static readonly Color[] LegendColors =
+        {
+            BuildingMarker.QuietColor, BuildingMarker.PoweredColor, BuildingMarker.UnpoweredColor, BuildingMarker.AngryColor,
+            BuildingMarker.UnpoweredColor, BuildingMarker.UnpoweredColor, BuildingMarker.UnpoweredColor,   // the breakdowns flash like an unpowered building
+        };
+        private static readonly string[] LegendKeys =
+        {
+            "help.legend.quiet", "help.legend.powered", "help.legend.unpowered", "help.legend.angry",
+            "help.legend.sputter", "help.legend.belt", "help.legend.breaker",
+        };
         private static readonly string[] ActionKeys =
         {
             "help.act.move", "help.act.look", "help.act.jump", "help.act.sprint", "help.act.crouch",
             "help.act.interact", "help.act.grab", "help.act.usehit", "help.act.drop", "help.act.help",
         };
 
-        /// <summary>The four icons with a line each. Rows are laid out left to right; the HUD mirrors the listed rectangles in Arabic.</summary>
+        /// <summary>The seven icons (four moods, three breakdowns) with a line each. Rows are laid out left to right; the HUD mirrors the listed rectangles in Arabic.</summary>
         private static RectTransform BuildLegend(string name, Transform parent, float rowHeight, List<RectTransform> mirror)
         {
             RectTransform legend = ContentSetup.UiObject(name, parent);
-            for (int i = 0; i < 4; i++)
+            int rows = LegendKeys.Length;
+            for (int i = 0; i < rows; i++)
             {
-                float y = (1.5f - i) * rowHeight;
+                float y = ((rows - 1) * 0.5f - i) * rowHeight;
                 float icon = rowHeight * 0.82f;
                 Image bg = Panel($"IconBg{i}", legend, LegendColors[i]);
-                Place(bg.rectTransform, -400f, y, icon, icon);
+                Place(bg.rectTransform, -480f, y, icon, icon);
                 Image glyph = Panel("Icon", bg.transform, i == 3 ? new Color32(0xFF, 0xF4, 0xDC, 0xFF) : Ink);
                 glyph.sprite = _statusIcons[i];
                 glyph.preserveAspect = true;
                 Place(glyph.rectTransform, 0f, 0f, icon * 0.78f, icon * 0.78f);
                 RTLTextMeshPro text = ContentSetup.MakeText($"Text{i}", legend, LegendKeys[i], ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, rowHeight * 0.6f, Cream);
                 text.alignment = TextAlignmentOptions.Left;
-                Place((RectTransform)text.transform, 50f, y, 780f, rowHeight);
+                text.enableAutoSizing = true;   // the breakdown lines are longer
+                text.fontSizeMin = rowHeight * 0.38f;
+                text.fontSizeMax = rowHeight * 0.6f;
+                Place((RectTransform)text.transform, 40f, y, 900f, rowHeight);
                 mirror.Add(bg.rectTransform);
                 mirror.Add((RectTransform)text.transform);
             }
-            Place(legend, 0f, 0f, 900f, rowHeight * 4f);
+            Place(legend, 0f, 0f, 1100f, rowHeight * rows);
             return legend;
         }
 
@@ -229,9 +242,9 @@ namespace PowerCutCrew.Editor
             // legend under the lobby hint, clear of the big 3-2-1
             Image legendBg = Panel("LobbyLegend", canvas, new Color(0.05f, 0.07f, 0.16f, 0.82f));
             legendBg.rectTransform.anchorMin = legendBg.rectTransform.anchorMax = legendBg.rectTransform.pivot = new Vector2(0.5f, 1f);
-            legendBg.rectTransform.anchoredPosition = new Vector2(0f, -690f);
-            legendBg.rectTransform.sizeDelta = new Vector2(1000f, 290f);
-            RectTransform legendRows = BuildLegend("Rows", legendBg.transform, 64f, mirror);
+            legendBg.rectTransform.anchoredPosition = new Vector2(0f, -655f);
+            legendBg.rectTransform.sizeDelta = new Vector2(1180f, 7f * 52f + 24f);
+            RectTransform legendRows = BuildLegend("Rows", legendBg.transform, 52f, mirror);
             legendRows.anchoredPosition = Vector2.zero;
 
             // the corner hint
@@ -245,30 +258,30 @@ namespace PowerCutCrew.Editor
 
             // the controls card
             Image card = Panel("ControlsCard", canvas, new Color(0.08f, 0.1f, 0.22f, 1f));
-            Place(card.rectTransform, 0f, 0f, 1100f, 940f);
-            RTLTextMeshPro title = ContentSetup.MakeText("Title", card.rectTransform, "help.card.title", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 70f, Lamp);
-            Place((RectTransform)title.transform, 0f, 405f, 900f, 80f);
+            Place(card.rectTransform, 0f, 0f, 1200f, 1040f);
+            RTLTextMeshPro title = ContentSetup.MakeText("Title", card.rectTransform, "help.card.title", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 64f, Lamp);
+            Place((RectTransform)title.transform, 0f, 455f, 900f, 76f);
             var rowBindings = new LocalizedRtlText[ActionKeys.Length];
             for (int i = 0; i < ActionKeys.Length; i++)
             {
-                float y = 330f - i * 50f;
-                RTLTextMeshPro label = ContentSetup.MakeText($"Action{i}", card.rectTransform, ActionKeys[i], ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 40f, Cream);
+                float y = 385f - i * 40f;
+                RTLTextMeshPro label = ContentSetup.MakeText($"Action{i}", card.rectTransform, ActionKeys[i], ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 34f, Cream);
                 label.alignment = TextAlignmentOptions.Left;
-                Place((RectTransform)label.transform, -270f, y, 440f, 48f);
-                RTLTextMeshPro binding = ContentSetup.MakeText($"Binding{i}", card.rectTransform, "help.binding", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 38f, Lamp);
+                Place((RectTransform)label.transform, -300f, y, 440f, 40f);
+                RTLTextMeshPro binding = ContentSetup.MakeText($"Binding{i}", card.rectTransform, "help.binding", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 32f, Lamp);
                 binding.alignment = TextAlignmentOptions.Left;
-                Place((RectTransform)binding.transform, 200f, y, 560f, 48f);
+                Place((RectTransform)binding.transform, 220f, y, 600f, 40f);
                 rowBindings[i] = Loc(binding);
                 mirror.Add((RectTransform)label.transform);
                 mirror.Add((RectTransform)binding.transform);
             }
-            RectTransform cardLegend = BuildLegend("Legend", card.rectTransform, 48f, mirror);
-            cardLegend.anchoredPosition = new Vector2(0f, -250f);
+            RectTransform cardLegend = BuildLegend("Legend", card.rectTransform, 44f, mirror);
+            cardLegend.anchoredPosition = new Vector2(0f, -175f);
             RTLTextMeshPro close = ContentSetup.MakeText("CloseHint", card.rectTransform, "help.card.close", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 34f, Cream);
             close.alignment = TextAlignmentOptions.Left;
-            Place((RectTransform)close.transform, -300f, -420f, 460f, 60f);
+            Place((RectTransform)close.transform, -330f, -455f, 460f, 60f);
             Button hintButton = ContentSetup.MakeButton("HintToggle", card.rectTransform, "help.hint_hide", new Vector2(520f, 70f));
-            Place((RectTransform)hintButton.transform, 270f, -420f, 520f, 70f);
+            Place((RectTransform)hintButton.transform, 300f, -455f, 520f, 70f);
             mirror.Add((RectTransform)close.transform);
             mirror.Add((RectTransform)hintButton.transform);
 

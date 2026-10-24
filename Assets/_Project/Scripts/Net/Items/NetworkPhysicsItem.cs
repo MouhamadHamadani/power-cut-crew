@@ -44,6 +44,8 @@ namespace PowerCutCrew.Net
         [SerializeField] private Renderer[] _renderers;
         [Tooltip("Hold with a spring joint to the holder's hold body (cable plug) instead of a kinematic follow (cans).")]
         [SerializeField] private bool _springHold;
+        [Tooltip("The plain wander bot leaves this one alone (the wrench and the spare belts belong to the breakdown bots).")]
+        [SerializeField] private bool _ignoredByWanderBots;
         [SerializeField] private float _holdSpring = 600f;
         [SerializeField] private float _holdDamper = 60f;
         [SerializeField] private float _holdMaxForce = 3000f;
@@ -70,6 +72,7 @@ namespace PowerCutCrew.Net
         private float _netSpeed;
 
         public string Kind => _kind;
+        public bool IgnoredByWanderBots => _ignoredByWanderBots;
         public ulong HolderClientId => _holder.Value;
         public bool IsHeld => _holder.Value != NoHolder;
         public int HolderVersion => _holderVersion.Value;

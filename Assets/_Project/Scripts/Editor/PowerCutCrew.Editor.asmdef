@@ -30,7 +30,8 @@
         "PowerCutCrew.Generator",
         "PowerCutCrew.Cables",
         "PowerCutCrew.Buildings",
-        "PowerCutCrew.Shift"
+        "PowerCutCrew.Shift",
+        "PowerCutCrew.Breakdowns"
     ],
     "includePlatforms": [
         "Editor"

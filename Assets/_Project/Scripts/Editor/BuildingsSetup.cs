@@ -37,6 +37,7 @@ namespace PowerCutCrew.Editor
             EditorUtility.SetDirty(AssetDatabase.LoadAssetAtPath<PowerCutCrew.Net.NetTuning>($"{Root}/Config/Resources/NetTuning.asset"));
             CreateStrings();
             CreateReadabilityStrings();
+            CreateBreakdownStrings();
             GenerateIcons();
             PatchStreams();
 
@@ -53,6 +54,7 @@ namespace PowerCutCrew.Editor
             RemovePlaceholderWalls();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            RunBreakdowns();   // the generator's breakdown parts use the marker prefab and the strings built above
             Debug.Log("[Setup] buildings and shift built");
         }
 
@@ -271,29 +273,29 @@ namespace PowerCutCrew.Editor
             Image dim = Panel("Dim", summary.transform, new Color(0.02f, 0.03f, 0.08f, 0.82f));
             ContentSetup.Stretch(dim.rectTransform);
             Image card = Panel("Card", summary.transform, new Color(0.08f, 0.1f, 0.22f, 0.96f));
-            Place(card.rectTransform, 0f, 0f, 1000f, 860f);
-            RTLTextMeshPro title = ContentSetup.MakeText("Title", card.rectTransform, "shift.sum.title", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 78f, Lamp);
-            Place((RectTransform)title.transform, 0f, 360f, 900f, 110f);
-            string[] keys = { "shift.sum.uptime", "shift.sum.money", "shift.sum.angry", "shift.sum.overheats", "shift.sum.snaps", "shift.sum.pulls" };
+            Place(card.rectTransform, 0f, 0f, 1000f, 980f);
+            RTLTextMeshPro title = ContentSetup.MakeText("Title", card.rectTransform, "shift.sum.title", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 76f, Lamp);
+            Place((RectTransform)title.transform, 0f, 420f, 900f, 100f);
+            string[] keys = { "shift.sum.uptime", "shift.sum.money", "shift.sum.angry", "shift.sum.overheats", "shift.sum.snaps", "shift.sum.pulls", "shift.sum.fixed", "shift.sum.fixtime" };
             var lines = new RTLTextMeshPro[keys.Length];
             for (int i = 0; i < keys.Length; i++)
             {
-                lines[i] = ContentSetup.MakeText($"Line{i}", card.rectTransform, keys[i], ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 52f, text);
-                Place((RectTransform)lines[i].transform, 0f, 235f - i * 78f, 900f, 70f);
+                lines[i] = ContentSetup.MakeText($"Line{i}", card.rectTransform, keys[i], ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 48f, text);
+                Place((RectTransform)lines[i].transform, 0f, 310f - i * 64f, 900f, 60f);
             }
-            RTLTextMeshPro verdict = ContentSetup.MakeText("Verdict", card.rectTransform, "shift.verdict.good", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 56f, Lamp);
+            RTLTextMeshPro verdict = ContentSetup.MakeText("Verdict", card.rectTransform, "shift.verdict.good", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 54f, Lamp);
             verdict.textWrappingMode = TextWrappingModes.Normal;
-            Place((RectTransform)verdict.transform, 0f, -245f, 900f, 130f);
+            Place((RectTransform)verdict.transform, 0f, -270f, 900f, 120f);
 
             var hostButtons = new GameObject("HostButtons", typeof(RectTransform));
             hostButtons.transform.SetParent(card.rectTransform, false);
-            Place((RectTransform)hostButtons.transform, 0f, -365f, 900f, 100f);
+            Place((RectTransform)hostButtons.transform, 0f, -410f, 900f, 100f);
             Button again = ContentSetup.MakeButton("AnotherShift", hostButtons.transform, "shift.sum.again", new Vector2(420f, 90f));
             Place((RectTransform)again.transform, -230f, 0f, 420f, 90f);
             Button menu = ContentSetup.MakeButton("BackToMenu", hostButtons.transform, "shift.sum.menu", new Vector2(420f, 90f));
             Place((RectTransform)menu.transform, 230f, 0f, 420f, 90f);
             RTLTextMeshPro waiting = ContentSetup.MakeText("Waiting", card.rectTransform, "shift.sum.waiting", ContentSetup.BodyFontEn, ContentSetup.BodyFontAr, 50f, text);
-            Place((RectTransform)waiting.transform, 0f, -365f, 900f, 90f);
+            Place((RectTransform)waiting.transform, 0f, -410f, 900f, 90f);
 
             var hud = root.AddComponent<ShiftHud>();
             Set(hud, "_time", Loc(time));
@@ -308,6 +310,8 @@ namespace PowerCutCrew.Editor
             Set(hud, "_sumOverheats", Loc(lines[3]));
             Set(hud, "_sumSnaps", Loc(lines[4]));
             Set(hud, "_sumPulls", Loc(lines[5]));
+            Set(hud, "_sumFixed", Loc(lines[6]));
+            Set(hud, "_sumFixTime", Loc(lines[7]));
             Set(hud, "_sumVerdict", Loc(verdict));
             Set(hud, "_hostButtons", hostButtons);
             Set(hud, "_waiting", waiting.gameObject);

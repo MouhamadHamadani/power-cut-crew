@@ -1,4 +1,5 @@
 using System;
+using PowerCutCrew.Breakdowns;
 using PowerCutCrew.Buildings;
 using PowerCutCrew.Cables;
 using PowerCutCrew.Net;
@@ -17,6 +18,8 @@ namespace PowerCutCrew.Shift
         public int Snaps;
         public int FailedPulls;
         public byte Verdict;
+        public int BreakdownsFixed;
+        public float AvgFixSeconds;
 
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
@@ -27,12 +30,14 @@ namespace PowerCutCrew.Shift
             serializer.SerializeValue(ref Snaps);
             serializer.SerializeValue(ref FailedPulls);
             serializer.SerializeValue(ref Verdict);
+            serializer.SerializeValue(ref BreakdownsFixed);
+            serializer.SerializeValue(ref AvgFixSeconds);
         }
 
         public bool Equals(ShiftSummaryData o)
         {
             return UptimePercent.Equals(o.UptimePercent) && Money == o.Money && AngryBuildings == o.AngryBuildings && Overheats == o.Overheats
-                && Snaps == o.Snaps && FailedPulls == o.FailedPulls && Verdict == o.Verdict;
+                && Snaps == o.Snaps && FailedPulls == o.FailedPulls && Verdict == o.Verdict && BreakdownsFixed == o.BreakdownsFixed && AvgFixSeconds.Equals(o.AvgFixSeconds);
         }
     }
 
@@ -83,6 +88,7 @@ namespace PowerCutCrew.Shift
                 _model = new ShiftModel(ShiftTuning.Instance.Duration, ShiftTuning.Instance.CountdownSeconds);
                 _timeLeft.Value = _model.TimeLeft;
             }
+            if (IsServer) { BreakdownNet.Started += OnBreakdownStarted; }
             if (_hudPrefab != null)
             {
                 _hud = Instantiate(_hudPrefab);
@@ -92,6 +98,7 @@ namespace PowerCutCrew.Shift
 
         public override void OnNetworkDespawn()
         {
+            if (IsServer) { BreakdownNet.Started -= OnBreakdownStarted; }
             if (Instance == this) { Instance = null; }
             if (_hud != null) { Destroy(_hud.gameObject); }
         }
@@ -125,6 +132,7 @@ namespace PowerCutCrew.Shift
                 if (b != null && b.IsServer && b.Model != null) { b.Model.Stop(); b.HostClearBubble(); b.HostPublishNow(); }
             }
             CoreLoopWorld.ResetStreet();
+            if (BreakdownNet.Instance != null) { BreakdownNet.Instance.HostReset(); }
             _model.Reset();
             _moneyExact = 0f;
             _money.Value = 0;
@@ -158,6 +166,8 @@ namespace PowerCutCrew.Shift
         {
             _director = new BuildingDirector(LaunchArgs.Seed * 31 + 7);
             _director.Begin();
+            _bubbleRng = new System.Random(LaunchArgs.Seed * 71 + 5);
+            if (BreakdownNet.Instance != null && BreakdownNet.Instance.IsServer) { BreakdownNet.Instance.HostBeginShift(); }
             _moneyExact = 0f;
             _money.Value = 0;
             _baseOverheats = NetMetrics.GetCount("overheats");
@@ -175,7 +185,15 @@ namespace PowerCutCrew.Shift
             {
                 if (item != null && item.IsHeld) { held++; }
             }
-            Debug.Log($"[Shift] start state: money {_money.Value}, happiness {happy}, bubbles {bubbles}, held items {held}");
+            string breakdownState = "";
+            BreakdownNet breakdowns = BreakdownNet.Instance;
+            if (breakdowns != null && breakdowns.IsSpawned)
+            {
+                WrenchItem wrench = WrenchItem.Instance;
+                float fromHook = wrench != null && breakdowns.WrenchHook != null ? Vector3.Distance(wrench.transform.position, breakdowns.WrenchHook.position) : -1f;
+                breakdownState = $", breakdowns active {breakdowns.ActiveCount}, loose belts {SpareBelt.CountIn(NetworkManager)}, wrench {fromHook:F2} m from its hook";
+            }
+            Debug.Log($"[Shift] start state: money {_money.Value}, happiness {happy}, bubbles {bubbles}, held items {held}{breakdownState}");
             Debug.Log($"[Shift] the power cut begins ({_model.Duration:F0} s, {_director.Buildings.Count} buildings)");
         }
 
@@ -183,8 +201,11 @@ namespace PowerCutCrew.Shift
         {
             ShiftTuning t = ShiftTuning.Instance;
             float uptime = _director != null ? _director.Group.UptimePercent : 100f;
+            BreakdownNet breakdowns = BreakdownNet.Instance != null && BreakdownNet.Instance.IsServer ? BreakdownNet.Instance : null;
             var summary = new ShiftSummaryData
             {
+                BreakdownsFixed = breakdowns != null ? breakdowns.FixedCount : 0,
+                AvgFixSeconds = breakdowns != null ? Mathf.Round(breakdowns.AverageFixSeconds * 10f) / 10f : 0f,
                 UptimePercent = Mathf.Round(uptime * 10f) / 10f,
                 Money = Mathf.FloorToInt(_moneyExact),
                 AngryBuildings = _director != null ? _director.Group.AngryCount : 0,
@@ -198,8 +219,38 @@ namespace PowerCutCrew.Shift
             NetMetrics.Sample("shiftUptimePct", summary.UptimePercent);
             NetMetrics.Sample("shiftMoney", summary.Money);
             NetMetrics.Sample("shiftAngry", summary.AngryBuildings);
-            Debug.Log($"[Shift] over: uptime {summary.UptimePercent:F1} %, money {summary.Money}, angry {summary.AngryBuildings}, overheats {summary.Overheats}, snaps {summary.Snaps}, failed pulls {summary.FailedPulls}");
+            if (breakdowns != null) { breakdowns.HostEndShift(); }
+            Debug.Log($"[Shift] over: uptime {summary.UptimePercent:F1} %, money {summary.Money}, angry {summary.AngryBuildings}, overheats {summary.Overheats}, snaps {summary.Snaps}, failed pulls {summary.FailedPulls}, breakdowns fixed {summary.BreakdownsFixed} (average fix {summary.AvgFixSeconds:F1} s)");
             if (_director != null) { _director.End(); _director = null; }
+        }
+
+        private System.Random _bubbleRng = new System.Random(5);
+
+        /// <summary>Host: a breakdown started, so a neighbour shouts about it a moment later (one of the buildings that want power, or any).</summary>
+        private void OnBreakdownStarted(BreakdownType type)
+        {
+            StartCoroutine(NeighbourLine(type));
+        }
+
+        private System.Collections.IEnumerator NeighbourLine(BreakdownType type)
+        {
+            yield return new WaitForSeconds(BreakdownTuning.Instance.NeighbourLineDelay);
+            if (_model == null || _model.State != ShiftState.Running) { yield break; }
+            var candidates = new System.Collections.Generic.List<BuildingNet>();
+            foreach (BuildingNet b in BuildingNet.All)
+            {
+                if (b != null && b.IsServer && b.IsSpawned && b.Model != null && b.Requesting && !b.HasBubble) { candidates.Add(b); }
+            }
+            if (candidates.Count == 0)
+            {
+                foreach (BuildingNet b in BuildingNet.All)
+                {
+                    if (b != null && b.IsServer && b.IsSpawned && b.Model != null) { candidates.Add(b); }
+                }
+            }
+            if (candidates.Count == 0) { yield break; }
+            BuildingNet speaker = candidates[_bubbleRng.Next(candidates.Count)];
+            speaker.HostShowBubble((BubbleTrigger)((int)BubbleTrigger.Sputter + (int)type), _bubbleRng);   // the triggers follow the breakdown types: sputter, belt, breaker
         }
 
         private void PublishState(bool force)

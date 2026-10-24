@@ -35,5 +35,12 @@ namespace PowerCutCrew.Net
         public float HoldBelowEyes = 0.3f;
         public float ThrowSpeed = 9f;
         public float DropForwardSpeed = 0.5f;
+
+        [Header("Name tags")]
+        [Tooltip("The tag looks its authored size at this distance (m).")]
+        public float NameTagReferenceDistance = 6f;
+        [Tooltip("Smallest and largest size on screen, as a factor of the authored size: a tag next to the camera is not huge, one far away stays readable.")]
+        public float NameTagMinScreenFactor = 0.6f;
+        public float NameTagMaxScreenFactor = 1.4f;
     }
 }

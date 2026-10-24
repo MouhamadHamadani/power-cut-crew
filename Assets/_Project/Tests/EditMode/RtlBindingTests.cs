@@ -45,7 +45,7 @@ namespace PowerCutCrew.Tests.EditMode
         {
             Assert.AreEqual("٢:١٠", ArabicDigits.Convert("2:10"));
             Assert.AreEqual("٣٤ $", ArabicDigits.Convert("34 $"));
-            Assert.AreEqual("٥.٥ A", ArabicDigits.Convert("5.5 A"));
+            Assert.AreEqual("٥٫٥ A", ArabicDigits.Convert("5.5 A"));
             Assert.AreEqual("Space / A", ArabicDigits.Convert("Space / A"));
             Assert.AreEqual("10 \u0623\u0645\u0628\u064A\u0631", ArabicDigits.Convert("10 \u0623\u0645\u0628\u064A\u0631"), "a string with Arabic letters is left to RTLTMPro, which keeps numbers in reading order");
             Assert.AreEqual("", ArabicDigits.Convert(""));

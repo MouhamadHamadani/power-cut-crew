@@ -9,14 +9,13 @@ namespace PowerCutCrew.Cables
 {
     /// <summary>
     /// Bot-run assertion for the core loop (see <see cref="NetVerifyExtras"/>): a client reports the generator state / fuel / heat,
-    /// the fuel of every can and the state of every cable it sees; the host compares with its own values. Values that move
-    /// all the time (fuel, heat) get a tolerance, discrete states must match once the host has been quiet for a few seconds.
+    /// the fuel of every can and the state of every cable it sees; the host compares with its own values field by field. Values that move
+    /// all the time (fuel, heat) get a tolerance, a discrete state is skipped (on its own, the rest is still compared) while the host has changed it in the last few seconds.
     /// </summary>
     public class CoreLoopVerify : MonoBehaviour
     {
         private const float QuietSeconds = 3f;
-        private static float _changedAt;
-        private static string _signature = "";
+        private static readonly ChangeClock Clock = new ChangeClock();
         private static readonly RateTracker HeatRate = new RateTracker();
         private static readonly RateTracker FuelRate = new RateTracker();
 
@@ -24,7 +23,7 @@ namespace PowerCutCrew.Cables
         private static void Register()
         {
             if (!LaunchArgs.Verify) { return; }
-            NetVerifyExtras.Add(BuildReport, HostCheck);
+            NetVerifyExtras.AddFields(BuildReport, HostCheck);
             var go = new GameObject("CoreLoopVerify") { hideFlags = HideFlags.HideAndDontSave };
             DontDestroyOnLoad(go);
             go.AddComponent<CoreLoopVerify>();
@@ -57,23 +56,23 @@ namespace PowerCutCrew.Cables
             return "";
         }
 
-        private static string HostCheck(string report)
+        private static bool Changing(string key) => Clock.Changing(key, Time.time, QuietSeconds);
+
+        private static void HostCheck(string report, VerifyFields v)
         {
-            if (Time.time - _changedAt < QuietSeconds) { return "skip"; }
-            var sb = new StringBuilder();
             GeneratorNet gen = GeneratorNet.Instance;
             string[] g = Part(report, "gen").Split(',');
             if (gen != null && g.Length == 3)
             {
                 float fuel = float.Parse(g[1], CultureInfo.InvariantCulture);
                 float heat = float.Parse(g[2], CultureInfo.InvariantCulture);
-                if (g[0] != gen.State.ToString()) { sb.Append($"generator state {g[0]} vs host {gen.State}; "); }
+                v.Field("gen.state", Changing("gen.state"), g[0] == gen.State.ToString(), $"generator state {g[0]} vs host {gen.State}");
                 // heat and fuel keep moving: the tolerance grows with how fast they changed during the age of the client report
                 NetTuning nt = NetTuning.Instance;
                 float fuelTolerance = VerifyTolerance.For(nt.VerifyFuelBase, FuelRate.MaxAbsRate(Time.time), nt.VerifySnapshotAgeSeconds);
                 float heatTolerance = VerifyTolerance.For(nt.VerifyHeatBase, HeatRate.MaxAbsRate(Time.time), nt.VerifySnapshotAgeSeconds);
-                if (Mathf.Abs(fuel - gen.Fuel) > fuelTolerance) { sb.Append($"generator fuel {fuel:F1} vs host {gen.Fuel:F1} (tolerance {fuelTolerance:F1}); "); }
-                if (Mathf.Abs(heat - gen.Heat) > heatTolerance) { sb.Append($"generator heat {heat:F0} vs host {gen.Heat:F0} (tolerance {heatTolerance:F1}); "); }
+                v.Field("gen.fuel", false, Mathf.Abs(fuel - gen.Fuel) <= fuelTolerance, $"generator fuel {fuel:F1} vs host {gen.Fuel:F1} (tolerance {fuelTolerance:F1})");
+                v.Field("gen.heat", false, Mathf.Abs(heat - gen.Heat) <= heatTolerance, $"generator heat {heat:F0} vs host {gen.Heat:F0} (tolerance {heatTolerance:F1})");
             }
             foreach (string entry in Part(report, "cans").Split('|'))
             {
@@ -84,7 +83,7 @@ namespace PowerCutCrew.Cables
                 foreach (NetworkPhysicsItem item in NetworkPhysicsItem.All)
                 {
                     var can = item.GetComponent<FuelCan>();
-                    if (can != null && item.Index == index && Mathf.Abs(can.Amount - amount) > 1.5f) { sb.Append($"can {index} fuel {amount:F1} vs host {can.Amount:F1}; "); }
+                    if (can != null && item.Index == index) { v.Field($"can{index}", Changing($"can{index}"), Mathf.Abs(can.Amount - amount) <= 1.5f, $"can {index} fuel {amount:F1} vs host {can.Amount:F1}"); }
                 }
             }
             foreach (string entry in Part(report, "cables").Split('|'))
@@ -98,27 +97,23 @@ namespace PowerCutCrew.Cables
                     if (c.NetworkObjectId == id) { host = c; break; }
                 }
                 if (host == null) { continue; }   // despawned on the host while the report was on its way
-                if (kv[1] != host.State.ToString() || kv[2] != host.SocketId.ToString()) { sb.Append($"cable {id} {kv[1]}/{kv[2]} vs host {host.State}/{host.SocketId}; "); }
+                v.Field($"cable{id}", Changing($"cable{id}"), kv[1] == host.State.ToString() && kv[2] == host.SocketId.ToString(), $"cable {id} {kv[1]}/{kv[2]} vs host {host.State}/{host.SocketId}");
             }
-            return sb.Length == 0 ? null : sb.ToString();
         }
 
-        /// <summary>Host: remember when something discrete last changed, so a comparison only happens while the world is quiet.</summary>
+        /// <summary>Host: note when each discrete value last changed, so a report is compared for the fields that have been quiet.</summary>
         private void Update()
         {
             GeneratorNet gen = GeneratorNet.Instance;
             if (gen == null || !gen.IsServer) { return; }
             HeatRate.Add(Time.time, gen.Heat);
             FuelRate.Add(Time.time, gen.Fuel);
-            var sb = new StringBuilder();
-            sb.Append(gen.State);
-            foreach (CableNet c in CableNet.All) { sb.Append($"|{c.Outlet}:{c.State}:{c.SocketId}:{c.GetInstanceID()}"); }
-            sb.Append(HoldRegistry.Instance != null ? HoldRegistry.Instance.ActiveCount : 0);
-            string signature = sb.ToString();
-            if (signature != _signature)
+            Clock.Observe("gen.state", gen.State.ToString(), Time.time);
+            foreach (CableNet c in CableNet.All) { Clock.Observe($"cable{c.NetworkObjectId}", $"{c.Outlet}:{c.State}:{c.SocketId}:{c.GetInstanceID()}", Time.time); }
+            foreach (NetworkPhysicsItem item in NetworkPhysicsItem.All)
             {
-                _signature = signature;
-                _changedAt = Time.time;
+                var can = item.GetComponent<FuelCan>();
+                if (can != null && item.Index >= 0) { Clock.Observe($"can{item.Index}", $"{item.HolderClientId}:{Mathf.Round(can.Amount)}", Time.time); }
             }
         }
     }

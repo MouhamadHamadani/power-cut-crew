@@ -73,7 +73,7 @@ namespace PowerCutCrew.Buildings
             for (int i = 0; i < _buildings.Count; i++)
             {
                 BuildingNet b = _buildings[i];
-                _powered[i] = gen != null && gen.Grid.IsPowered(b.Index, gen.IsRunning);
+                _powered[i] = gen != null && gen.Feeds(b.Index);
             }
             float money = _group.Tick(dt, _powered, _events);
             for (int i = 0; i < _buildings.Count; i++)
@@ -82,8 +82,8 @@ namespace PowerCutCrew.Buildings
                 if (gen != null) { gen.Grid.SetDraw(b.Index, b.Model.Amps); }
                 HandleEvents(b, _events[i]);
 
-                // a Requesting building that was in the dark and now has power again: somebody re-plugged it
-                bool dark = b.Model.Requesting && !_powered[i];
+                // a Requesting building that was in the dark and now has power again: somebody re-plugged it (a sputtering engine's dips are not a re-plug)
+                bool dark = b.Model.Requesting && !_powered[i] && (gen == null || !gen.InDip);
                 if (_wasUnpowered[i] && b.Model.Requesting && _powered[i]) { NetMetrics.Count("replugs"); }
                 _wasUnpowered[i] = dark;
                 b.HostPublish();

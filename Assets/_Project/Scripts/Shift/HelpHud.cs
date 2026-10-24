@@ -1,4 +1,5 @@
 using System.Globalization;
+using PowerCutCrew.Breakdowns;
 using PowerCutCrew.Buildings;
 using PowerCutCrew.Cables;
 using PowerCutCrew.Core;
@@ -214,6 +215,13 @@ namespace PowerCutCrew.Shift
                 FuelFraction = gen != null && gen.Capacity > 0f ? gen.Fuel / gen.Capacity : 1f,
                 Heat = gen != null ? gen.Heat : 0f,
             };
+            BreakdownNet breakdowns = BreakdownNet.Instance;
+            if (breakdowns != null && breakdowns.IsSpawned)
+            {
+                inputs.SputterActive = breakdowns.IsActive(BreakdownType.Sputter);
+                inputs.BeltActive = breakdowns.IsActive(BreakdownType.Belt);
+                inputs.BreakerActive = breakdowns.IsActive(BreakdownType.Breaker);
+            }
             foreach (BuildingNet b in BuildingNet.All)
             {
                 if (b != null && b.IsSpawned && b.Marker == MarkerState.Unpowered) { inputs.AnyUnpowered = true; break; }
@@ -232,10 +240,10 @@ namespace PowerCutCrew.Shift
             Tip? started = _tips.Update(Time.deltaTime, inputs);
             if (started.HasValue && _controls != null)
             {
-                string grab = KeyboardAndGamepad(_controls.Player.Grab);
                 _tipText.SetKey(TipLogic.Key(started.Value));
-                // only the plug tip names a key; the others are plain sentences
-                if (started.Value == Tip.Plug) { _tipText.Format = text => RtlBinding.Compose(grab, text); }
+                // the plug tip and the breakdown tips name the key that does it; the others are plain sentences
+                string binding = TipBinding(started.Value);
+                if (binding != null) { _tipText.Format = text => RtlBinding.Compose(binding, text); }
                 else { _tipText.Format = null; }
                 _tipText.Refresh();
                 _tipShown = TipLogic.Key(started.Value);
@@ -243,6 +251,19 @@ namespace PowerCutCrew.Shift
             bool show = _tips.Current.HasValue;
             if (_tip.activeSelf != show) { _tip.SetActive(show); }
             if (!show) { _tipShown = null; }
+        }
+
+        /// <summary>The key a tip names, as the player has it bound right now (null when the tip is a plain sentence).</summary>
+        private string TipBinding(Tip tip)
+        {
+            switch (tip)
+            {
+                case Tip.Plug: return KeyboardAndGamepad(_controls.Player.Grab);
+                case Tip.Sputter: return KeyboardAndGamepad(_controls.Player.UseHit);   // swing the wrench
+                case Tip.Belt: return KeyboardAndGamepad(_controls.Player.Interact);    // take a belt, hold to fit it
+                case Tip.Breaker: return KeyboardAndGamepad(_controls.Player.Interact);  // hold the lever
+                default: return null;
+            }
         }
 
         private void ApplyMirror()

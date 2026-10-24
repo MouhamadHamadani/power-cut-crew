@@ -1102,6 +1102,9 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 33e5b1939808c7a48a5af2d949714360, type: 3}
   - {fileID: 21300000, guid: aa1cae96f5de7d241bb2722875c2d701, type: 3}
   - {fileID: 21300000, guid: eccab7e6732a45044966e90d6557b535, type: 3}
+  - {fileID: 21300000, guid: 35741e6f5127bc243baa9e090ffb2f5b, type: 3}
+  - {fileID: 21300000, guid: 7f27d95f74b462d44ab2361849beea49, type: 3}
+  - {fileID: 21300000, guid: 8d6e27974aa03104592e512bd3dcba9f, type: 3}
   _fullSize: {x: 360, y: 150}
   _farSize: {x: 200, y: 100}
   _dotSize: 30

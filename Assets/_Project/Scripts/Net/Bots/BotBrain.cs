@@ -187,7 +187,7 @@ namespace PowerCutCrew.Net
             Vector3 me = NetPlayer.Local != null ? NetPlayer.Local.transform.position : Vector3.zero;
             foreach (NetworkPhysicsItem i in NetworkPhysicsItem.All)
             {
-                if (i.IsHeld) { continue; }
+                if (i.IsHeld || i.IgnoredByWanderBots) { continue; }
                 float d = Vector3.Distance(i.transform.position, me) + R() * 4f;
                 if (d < bestD) { bestD = d; best = i; }
             }

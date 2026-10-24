@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace PowerCutCrew.Shift
 {
-    public enum Tip : byte { Plug = 0, Unpowered = 1, Fuel = 2, Overheat = 3 }
+    public enum Tip : byte { Plug = 0, Unpowered = 1, Fuel = 2, Overheat = 3, Sputter = 4, Belt = 5, Breaker = 6 }
 
     public struct TipSettings
     {
@@ -23,17 +23,21 @@ namespace PowerCutCrew.Shift
         public bool AnyUnpowered;
         public float FuelFraction;
         public float Heat;
+        /// <summary>The breakdowns that are active right now.</summary>
+        public bool SputterActive;
+        public bool BeltActive;
+        public bool BreakerActive;
     }
 
     /// <summary>
     /// Which first-shift tip is on screen (plain C#, unit tested): each tip appears once per game session, only when its trigger happens
-    /// (this player near a free plug, a building in the dark, fuel low, generator hot), one at a time with a pause between them.
+    /// (this player near a free plug, a building in the dark, fuel low, generator hot, a breakdown of each kind), one at a time with a pause between them.
     /// A new session means a new instance; "Another shift" keeps this one.
     /// </summary>
     public class TipLogic
     {
         private readonly TipSettings _s;
-        private readonly bool[] _seen = new bool[4];
+        private readonly bool[] _seen = new bool[7];
         private readonly Queue<Tip> _waiting = new Queue<Tip>();
         private float _left;
         private float _gap;
@@ -54,6 +58,9 @@ namespace PowerCutCrew.Shift
                 case Tip.Plug: return "tip.plug";
                 case Tip.Unpowered: return "tip.unpowered";
                 case Tip.Fuel: return "tip.fuel";
+                case Tip.Sputter: return "tip.sputter";
+                case Tip.Belt: return "tip.belt";
+                case Tip.Breaker: return "tip.breaker";
                 default: return "tip.overheat";
             }
         }
@@ -71,6 +78,9 @@ namespace PowerCutCrew.Shift
             Notice(Tip.Unpowered, i.AnyUnpowered);
             Notice(Tip.Fuel, i.FuelFraction < _s.FuelWarnFraction);
             Notice(Tip.Overheat, i.Heat > _s.HeatWarn);
+            Notice(Tip.Sputter, i.SputterActive);
+            Notice(Tip.Belt, i.BeltActive);
+            Notice(Tip.Breaker, i.BreakerActive);
 
             if (Current.HasValue)
             {

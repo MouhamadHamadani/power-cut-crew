@@ -19,13 +19,24 @@ namespace PowerCutCrew.Buildings
         private static readonly Color FlashColor = new Color32(0xFF, 0xB4, 0x9E, 0xFF);
 
         [SerializeField] private BuildingMarkerUI _uiPrefab;
+        [Tooltip("Not drawn until something shows it (the generator's breakdown markers).")]
+        [SerializeField] private bool _startHidden;
 
         private BuildingMarkerUI _ui;
         private MarkerState _state = (MarkerState)255;
         private float _shownAmps = -1f;
         private string _shownName;
 
+        /// <summary>The first index of the breakdown icons in the marker prefab's icon list (after the four building moods).</summary>
+        public const int BreakdownIconBase = 4;
+
+        private bool _hidden;
+        private int _breakdownIcon = -1;
+
         public MarkerState State => _state;
+
+        /// <summary>A hidden marker is not drawn at all (the generator's markers while nothing is broken).</summary>
+        public bool Hidden => _hidden;
         public BuildingMarkerUI Ui => _ui;
         public Vector3 AnchorPosition => transform.position;
 
@@ -36,7 +47,9 @@ namespace PowerCutCrew.Buildings
             _ui = overlay.Spawn(_uiPrefab);
             _ui.gameObject.SetActive(false);   // the overlay shows it once it knows where it is
             overlay.Register(this);
+            _hidden = _startHidden;
             _state = (MarkerState)255;
+            _breakdownIcon = -1;
             _shownAmps = -1f;
             _shownName = null;
         }
@@ -46,8 +59,34 @@ namespace PowerCutCrew.Buildings
             if (_ui != null) { Destroy(_ui.gameObject); _ui = null; }
         }
 
+        public void Hide()
+        {
+            _hidden = true;
+            if (_ui != null && _ui.gameObject.activeSelf) { _ui.gameObject.SetActive(false); }
+        }
+
+        /// <summary>A generator breakdown: a flashing marker like an unpowered building, with the breakdown's icon, a short title and what to do about it.</summary>
+        public void ShowBreakdown(int iconIndex, string titleKey, string fixKey)
+        {
+            _hidden = false;
+            if (_ui == null) { _state = MarkerState.Breakdown; return; }
+            if (_state != MarkerState.Breakdown || iconIndex != _breakdownIcon)
+            {
+                _state = MarkerState.Breakdown;
+                _breakdownIcon = iconIndex;
+                _ui.SetState(BreakdownIconBase + iconIndex);
+                _ui.AmpsText.Format = null;
+                _ui.AmpsText.SetKey(titleKey);
+                _ui.NameText.SetKey(fixKey);
+                _ui.SetSpike(false, 1f);
+                _shownAmps = -1f;
+                _shownName = fixKey;
+            }
+        }
+
         public void Show(MarkerState state, float amps, bool spiking, string nameKey)
         {
+            _hidden = false;
             if (_ui == null) { _state = state; return; }
             if (state != _state)
             {
@@ -76,7 +115,8 @@ namespace PowerCutCrew.Buildings
             switch (_state)
             {
                 case MarkerState.Powered: c = PoweredColor; break;
-                case MarkerState.Unpowered: c = Color.Lerp(UnpoweredColor, FlashColor, 0.5f + 0.5f * Mathf.Sin(Time.time * BuildingTuning.Instance.FlashSpeed)); break;   // flashing
+                case MarkerState.Unpowered:
+                case MarkerState.Breakdown: c = Color.Lerp(UnpoweredColor, FlashColor, 0.5f + 0.5f * Mathf.Sin(Time.time * BuildingTuning.Instance.FlashSpeed)); break;   // flashing
                 case MarkerState.Angry: c = AngryColor; break;
             }
             _ui.SetPanelColor(c);

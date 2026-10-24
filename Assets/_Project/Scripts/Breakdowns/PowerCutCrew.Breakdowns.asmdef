@@ -2,7 +2,14 @@
     "name": "PowerCutCrew.Breakdowns",
     "rootNamespace": "PowerCutCrew.Breakdowns",
     "references": [
-        "PowerCutCrew.Core"
+        "PowerCutCrew.Core",
+        "PowerCutCrew.Net",
+        "PowerCutCrew.Generator",
+        "PowerCutCrew.Localization",
+        "Unity.Netcode.Runtime",
+        "Unity.Collections",
+        "Unity.Localization",
+        "Unity.ResourceManager"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

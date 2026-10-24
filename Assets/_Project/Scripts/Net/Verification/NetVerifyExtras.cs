@@ -16,28 +16,43 @@ namespace PowerCutCrew.Net
         /// <summary>Client: describe what this machine sees.</summary>
         public static Func<string> BuildReport => () => string.Join(";", Reporters.ConvertAll(r => r()));
 
-        /// <summary>Host: compare a client's report with the host state. Returns null when it matches, "skip" when the host state
-        /// was changing too fast to compare, otherwise a description of what differs.</summary>
-        public static string HostCheck(string report)
+        /// <summary>Host: compare a client's report with the host state, field by field. A field the host was still changing is skipped (listed in
+        /// <see cref="VerifyFields.SkippedNames"/>), every other field is compared; <see cref="VerifyFields.Diff"/> says what differs.</summary>
+        public static VerifyFields HostCheck(string report)
         {
-            string all = null;
-            foreach (Func<string, string> c in Checkers)
-            {
-                string d = c(report);
-                if (d == "skip") { return d; }
-                if (d != null) { all += d; }
-            }
-            return all;
+            var fields = new VerifyFields();
+            foreach (Action<string, VerifyFields> c in Checkers) { c(report, fields); }
+            return fields;
         }
 
         private static readonly List<Func<string>> Reporters = new List<Func<string>>();
-        private static readonly List<Func<string, string>> Checkers = new List<Func<string, string>>();
+        private static readonly List<Action<string, VerifyFields>> Checkers = new List<Action<string, VerifyFields>>();
 
-        /// <summary>Plug a game system in: its report is joined with the others (";"-separated key=value parts), its check sees the whole report.</summary>
-        public static void Add(Func<string> build, Func<string, string> check)
+        /// <summary>Plug a game system in: its report is joined with the others (";"-separated key=value parts), its check sees the whole report
+        /// and reports each field it compares or skips.</summary>
+        public static void AddFields(Func<string> build, Action<string, VerifyFields> check)
         {
             Reporters.Add(build);
             Checkers.Add(check);
+        }
+
+        /// <summary>A system whose check answers with one string: null = matches, "skip" = host state was changing, anything else = what differs.</summary>
+        public static void Add(Func<string> build, Func<string, string> check)
+        {
+            AddFields(build, (report, fields) =>
+            {
+                string d = check(report);
+                if (d == "skip") { fields.Field("report", true, true); }
+                else if (d == null) { fields.Field("report", false, true); }
+                else { fields.Fail(d); }
+            });
+        }
+
+        /// <summary>Per run: how many fields were compared and how many skipped because the host was still changing them (shown in the metrics file).</summary>
+        private static void Count(VerifyFields fields)
+        {
+            NetMetrics.Count("verifyFieldsCompared", fields.Compared);
+            NetMetrics.Count("verifyFieldsSkipped", fields.Skipped);
         }
 
         public const string RecheckPrefix = "R|";
@@ -55,13 +70,14 @@ namespace PowerCutCrew.Net
                 // the same comparison, 0.5 s later, only when the first one differed: a value that was just moving has caught up
                 if (!Pending.TryGetValue(clientId, out string first)) { return; }
                 Pending.Remove(clientId);
-                string again = HostCheck(report.Substring(RecheckPrefix.Length));
-                if (again == "skip")
+                VerifyFields again = HostCheck(report.Substring(RecheckPrefix.Length));
+                Count(again);
+                if (again.Compared == 0)
                 {
                     NetMetrics.Count("verifyExtraSkipped");
                     Debug.Log($"[Verify2] OK (state changing again, re-check skipped) client {clientId}: first difference was {first.Trim()}");
                 }
-                else if (again == null)
+                else if (!again.Differs)
                 {
                     NetMetrics.Count("verifyExtraRecovered");
                     Debug.Log($"[Verify2] OK on re-check client {clientId}: differed at first ({first.Trim()}), the same {RecheckSeconds:F1} s later it matches");
@@ -69,7 +85,7 @@ namespace PowerCutCrew.Net
                 else
                 {
                     NetMetrics.Count("verifyExtraFail");
-                    Debug.Log($"[Verify2] FAIL client {clientId}: still differs after {RecheckSeconds:F1} s: {again.Trim()} (first: {first.Trim()})");
+                    Debug.Log($"[Verify2] FAIL client {clientId}: still differs after {RecheckSeconds:F1} s: {again.Diff.Trim()} (first: {first.Trim()})");
                 }
                 return;
             }
@@ -105,26 +121,21 @@ namespace PowerCutCrew.Net
                 offset += n;
             }
 
-            string diff = HostCheck(report);
-            bool differs = diff != null && diff != "skip";
-            if (differs) { Pending[clientId] = diff; diff = null; }   // counted only if the re-check still differs
-            bool skipped = diff == "skip";
-            if (diff != null && !skipped)
-            {
-                bad++;
-                sb.Append(' ').Append(diff);
-            }
+            VerifyFields fields = HostCheck(report);
+            Count(fields);
+            if (fields.Differs) { Pending[clientId] = fields.Diff; }   // counted only if the re-check still differs
             string prefix = $"client {clientId}: {keys.Length} streams (worst {worst * 100f:F1} cm)";
-            if (bad == 0 && differs) { return; }   // the re-check decides
+            if (bad == 0 && fields.Differs) { return; }   // the re-check decides
             if (bad == 0)
             {
-                NetMetrics.Count(skipped ? "verifyExtraSkipped" : "verifyExtraOk");
-                Debug.Log($"[Verify2] {(skipped ? "OK (state changing, game report skipped)" : "OK")} {prefix} report [{report}]");
+                NetMetrics.Count(fields.Compared == 0 ? "verifyExtraSkipped" : "verifyExtraOk");
+                Debug.Log($"[Verify2] OK {prefix}: compared {fields.Compared} fields, skipped {fields.Skipped} ({fields.SkippedSummary}) report [{report}]");
             }
             else
             {
+                if (fields.Differs) { sb.Append(' ').Append(fields.Diff); }
                 NetMetrics.Count("verifyExtraFail");
-                Debug.Log($"[Verify2] FAIL {prefix}:{sb} report [{report}]");
+                Debug.Log($"[Verify2] FAIL {prefix}:{sb} compared {fields.Compared} fields, skipped {fields.Skipped} ({fields.SkippedSummary}) report [{report}]");
             }
         }
     }

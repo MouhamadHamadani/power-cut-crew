@@ -49,7 +49,10 @@ namespace PowerCutCrew.Generator
             SetBar(_fuelBar, gen.Fuel / gen.Capacity);
             float heat01 = gen.Heat / 100f;
             SetBar(_heatBar, heat01);
-            _heatImage.color = Color.Lerp(new Color(0.2f, 0.8f, 0.3f), new Color(0.95f, 0.15f, 0.1f), heat01);
+            Color heatColor = Color.Lerp(new Color(0.2f, 0.8f, 0.3f), new Color(0.95f, 0.15f, 0.1f), heat01);
+            // a broken fan belt: the bar pulses between its colour and spark red
+            if (gen.HeatAlarm) { heatColor = Color.Lerp(heatColor, new Color(1f, 0.3f, 0.24f), 0.5f + 0.5f * Mathf.Sin(Time.time * 10f)); }
+            _heatImage.color = heatColor;
 
             float load = gen.Load;
             float rated = gen.RatedAmps;

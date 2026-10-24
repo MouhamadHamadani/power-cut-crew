@@ -39,6 +39,10 @@ HOST (authority)                                   CLIENT
 | `NetPlayer.VerifyExtrasRpc(...)` | owner â†’ host | reliable | `-verify` bot runs only: per-stream snapshot check (2 cm) and the core-loop report (generator, cans, cables) |
 | `NetPlayer.VerifyRpc(...)` | owner â†’ host | reliable | `-verify` bot runs only: late-join assertion |
 | `GeneratorNet.SputterRpc(result)` | host â†’ all | reliable | cosmetic: smoke and shake on a failed pull |
+| `NetPlayer.UseRpc(item, target, point)` | owner → host | reliable | use the held item (the wrench swing): the item, the thing the ray hit (the generator) and the hit point. The host drops it unless the sender holds the item (`useRejected`), then the wrench checks reach (`HitRange` 2 m + 0.75 m slack, from the player's eye), rhythm (0.4 s) and the sweet spot (0.25 m) |
+| `HoldRpc` on the belt slot / the breaker lever | owner → host | reliable | the existing hold-E path (begin, keep-alive 0.2 s, end); one player at a time through `BreakdownNet.Arbiter` |
+| NetworkVariables `BreakdownNet`: active mask (byte), sweet spot (byte), hits (byte), tripped outlet (int), lever up (bool), belt progress and reset progress (byte, 5 % steps) | host → all | reliable | what is broken right now; written only when a value changes, so a late joiner gets them with the spawn. Smoke, sparks, shake, flicker and the glow are drawn locally from these |
+| `BreakdownNet.StartedRpc / HitFeedbackRpc / FixedRpc / BeltFittedRpc / LeverRpc / BreakerFellRpc` | host → all | reliable | one-shot effects and the sound hook: a breakdown starts (sparks, bang), a wrench hit was judged (spark or clang), a fix, the old belt flies off (the seed makes the local prop fly the same on every machine), the lever goes up or falls back. Nothing per frame |
 | NetworkVariables `GeneratorNet`: state (byte, at once), fuel (0.5 steps), heat (1 steps), load (0.1 A steps) | host â†’ all | reliable | fuel / heat / load only when the quantised value changed and at most 4 Hz |
 | NetworkVariables `FuelCan`: fuel | host â†’ all | reliable | can fill level (visual fill) |
 | NetworkVariables `CableNet`: state, socket, outlet, snap index | host â†’ all | reliable | cable state machine; the rope shape itself travels as a snapshot stream |
@@ -243,3 +247,22 @@ After the fix S1 had 2 pop-outs (both a can) and 3 snaps (can, in reach, a playe
 Since the follow-up (Prompt 06b) the heat and fuel tolerance is `base + |rate| x snapshotAge` (`VerifyTolerance`, numbers in `NetTuning`: heat 4, fuel 1.5, age 1 s; the host tracks the fastest recent change with `RateTracker`), so a value that is racing up is not reported against a report that is a second old. Other fields are compared as before.
 
 Two `-verify` mismatches showed up in the core-loop comparison (not in shift or building fields, and not on the late joiner): S2 generator heat 86 vs 90 on a client while the heat was climbing towards the overheat (tolerance 4), S3 a cable seen as Held on a client while the host had plugged it. Both are timing noise of the older comparison under `bad`; not changed.
+
+## Prompt 07: breakdowns
+
+**New on the wire** (see the message list): `NetPlayer.UseRpc` (the wrench swing, validated by the host: holder, reach, rhythm, sweet spot), the existing hold-E path for the belt slot and the breaker lever, the `BreakdownNet` NetworkVariables (active mask, sweet spot, hits, tripped outlet, lever, two progress bars; written only on change) and a handful of one-shot RPCs. Smoke, sparks, shake, flicker and the glow are drawn locally from the NetworkVariables. The old belt that flies out is a **local prop** on every machine (one RPC with a seed) instead of a host-simulated `NetworkPhysicsItem`: nobody can pick it up and it is gone after 20 s, so a network object plus a transform stream would cost more than the single message. The wrench and the spare belts are ordinary `NetworkPhysicsItem`s (server-authority `NetworkTransform`).
+
+Effects on the host: the sputter's dip and the dead outlet go through `GeneratorModel.OutputDip` and `PowerGrid.SetTripped`, so buildings and sockets simply read `GeneratorNet.Feeds(socket)`; the lamps flicker through the existing `PowerSocket` NetworkVariable (changes only on a change of state).
+
+### Verification results (development build, `-netsim bad`, headless bots, 600 s shifts unless noted)
+
+| Run | Result |
+|---|---|
+| B1 (host + 3 bots) | 0 errors, 0 exceptions. 3 breakdowns (sputter 2, belt 1), 3 fixed, average fix **10.5 s**, 0 re-trips. Uptime 42.7 %, money 540, 1 Angry, 2 overheats, 8 snaps. Host upload **117.0 kbps average, 271.2 peak** |
+| B1 control (same build, `-breakdowns off`) | host upload 154.6 average, 303.8 peak; uptime 47.4 %, money 606. The breakdowns add no measurable upload: the noise between two runs (cable traffic) is far bigger than the few bytes of NetworkVariables. Prompt 06b's S1 had 125.7 / 262.9; this run is -7 % on average and +3 % on the peak, inside the 10 % allowed |
+| B2 (host + 2 bots, joiner at 300 s, `-verify`) | 0 errors, 0 exceptions. **24 comparisons, 24 OK, 0 mismatches** (the joiner: 8 of 8). 1114 fields compared, 40 skipped one by one (the whole-report skips of Prompt 06b are gone; most reports compared 44 to 48 fields, and the joiner reported the breakdown that was active when it arrived, with its sweet spot). Breakdowns: sputter 1, belt 2, breaker 1, 4 fixed |
+| B3 (host + 3 bots, `-shifts 2 -shiftseconds 150`) | 0 errors. After "Another shift" the second shift starts with 0 active breakdowns, 0 loose belts and the wrench 0.01 m from its hook (first shift: 0.02 m) |
+
+Over all bot runs the expected 3 to 5 breakdowns per 10 minutes held up (3, 4); the unit-test simulation gives 4.9. Bugs the runs found and fixed: the spawned wrench's rigidbody started at the origin (inside the generator) and fell through the world, so the item is placed through its body (`BreakdownWorld.PlaceBody`); the bots walked into the generator instead of round it (`BreakdownBot.NextWaypoint`).
+
+Screenshots (`-shot breakdowns`): `breakdown_{sputter,hit,belt,belt_fit,breaker,breaker_reset}_{en,ar}.png`, plus the new `lobby_legend`, `controls_card` and `shift_summary` (seven legend icons, the two new summary lines, "١٥٫٤٪").

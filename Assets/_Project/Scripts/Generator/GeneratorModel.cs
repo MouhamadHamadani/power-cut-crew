@@ -75,6 +75,18 @@ namespace PowerCutCrew.Generator
         public float LoadAmps { get; private set; }
 
         public int FailedPulls { get; private set; }
+
+        /// <summary>Breakdown hook: the engine is coughing, so the output is dead for the moment (the generator still runs: it burns fuel, but delivers and draws nothing).</summary>
+        public bool OutputDip { get; set; }
+
+        /// <summary>Breakdown hook: the fan belt is gone. Cooling stops and <see cref="BrokenCoolingExtraHeat"/> degrees per second come on top while running.</summary>
+        public bool CoolingBroken { get; set; }
+
+        public float BrokenCoolingExtraHeat { get; set; }
+
+        /// <summary>Running and not in a dip: the sockets it feeds have power.</summary>
+        public bool OutputLive => State == GeneratorState.Running && !OutputDip;
+
         public float Capacity => _s.Capacity;
         public float RatedAmps => _s.RatedAmps;
         public float TankSpace => _s.Capacity - Fuel;
@@ -127,10 +139,11 @@ namespace PowerCutCrew.Generator
         {
             if (State == GeneratorState.Running)
             {
-                LoadAmps = requestedLoadAmps;
+                LoadAmps = OutputDip ? 0f : requestedLoadAmps;
                 Fuel -= (_s.IdleBurn + _s.PerAmpBurn * LoadAmps) * deltaTime;
                 if (LoadAmps > _s.RatedAmps) { Heat += (LoadAmps - _s.RatedAmps) * _s.HeatPerAmpOver * deltaTime; }
-                else { Heat -= _s.CoolRunning * deltaTime; }
+                else if (!CoolingBroken) { Heat -= _s.CoolRunning * deltaTime; }
+                if (CoolingBroken) { Heat += BrokenCoolingExtraHeat * deltaTime; }
                 Heat = Mathf.Clamp(Heat, 0f, 100f);
                 if (Fuel <= 0f)
                 {

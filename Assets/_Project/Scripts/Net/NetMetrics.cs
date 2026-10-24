@@ -59,9 +59,9 @@ namespace PowerCutCrew.Net
             lock (_lock) { return _counters.TryGetValue(key, out int v) ? v : 0; }
         }
 
-        public static void Count(string key)
+        public static void Count(string key, int amount = 1)
         {
-            lock (_lock) { _counters[key] = (_counters.TryGetValue(key, out int v) ? v : 0) + 1; }
+            lock (_lock) { _counters[key] = (_counters.TryGetValue(key, out int v) ? v : 0) + amount; }
         }
 
         /// <summary>Record a sample of a named value (reported as avg / max / count).</summary>

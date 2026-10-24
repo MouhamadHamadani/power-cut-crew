@@ -420,6 +420,106 @@ MonoBehaviour:
     m_Localized: 'The generator is overheating: unplug a cable to let it cool'
     m_Metadata:
       m_Items: []
+  - m_Id: 4579093885022208
+    m_Localized: Take the wrench
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685504
+    m_Localized: Take a spare belt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685505
+    m_Localized: Pick up the belt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685506
+    m_Localized: Fit the belt (hold)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685507
+    m_Localized: Reset the breaker (hold)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685508
+    m_Localized: Engine coughing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685509
+    m_Localized: Hit the glow with the wrench
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685510
+    m_Localized: Fan belt snapped
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685511
+    m_Localized: Fit a belt from the crate
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685512
+    m_Localized: Breaker tripped
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685513
+    m_Localized: Lift the lever back up
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685514
+    m_Localized: 'Engine coughing: hit the glowing spot with the wrench'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685515
+    m_Localized: 'Belt snapped: fit a new one from the crate'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685516
+    m_Localized: 'Breaker tripped: lift the lever back up'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685517
+    m_Localized: swing the wrench at the glowing spot (it hangs by the generator)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685518
+    m_Localized: take a spare belt from the crate, then hold it at the glowing slot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685519
+    m_Localized: hold the lever to lift the breaker back up
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685520
+    m_Localized: 'Breakdowns fixed: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685521
+    m_Localized: 'Average fix time: {0} s'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685522
+    m_Localized: The lights are blinking like a disco!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685523
+    m_Localized: Is the generator coughing, or is that the neighbor's grandpa?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685524
+    m_Localized: Something is squealing! The generator or the cat?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685525
+    m_Localized: Smells like burnt rubber. Not complaining, just saying.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685526
+    m_Localized: Bang! I think the fuse box just sneezed.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4579093985685527
+    m_Localized: Who turned off the lights?! Fix the breaker!
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
