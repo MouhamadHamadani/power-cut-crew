@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db5cee57b608f2a45899e7900500033c, type: 3}
+  m_Name: BreakdownTuning
+  m_EditorClassIdentifier: PowerCutCrew.Breakdowns::PowerCutCrew.Breakdowns.BreakdownTuning
+  GraceSeconds: 60
+  MinGapSeconds: 40
+  MaxActive: 2
+  SputterChancePerSecond: 0.004
+  LowFuelMultiplier: 3
+  LowFuelFraction: 0.25
+  BeltChancePerSecond: 0.003
+  HotMultiplier: 3
+  HotHeat: 70
+  BreakerChancePerSecond: 0.002
+  OverloadMultiplier: 6
+  DipSeconds: 0.6
+  DipEverySeconds: 2.5
+  HitsToFix: 3
+  SweetSpotCount: 4
+  SweetSpotRadius: 0.25
+  HitRange: 2
+  HitRangeSlack: 0.75
+  SwingCooldown: 0.4
+  WrenchTossSpeed: 5
+  BeltExtraHeatPerSecond: 3
+  BeltFitSeconds: 2
+  OldPartSeconds: 20
+  MaxLooseBelts: 2
+  BreakerResetSeconds: 1.5
+  BreakerHoldAmpsRatio: 1
+  BreakerRetripSeconds: 1
+  ItemRespawnSeconds: 30
+  LostDistanceMeters: 20
+  FallBelowY: -2
+  NeighbourLineDelay: 1
+  ProgressStepPercent: 5

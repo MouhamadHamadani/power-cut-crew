@@ -18,6 +18,9 @@ namespace PowerCutCrew.Tests.EditMode
             if (!_registered) { _registered = true; NetVerifyExtras.Add(() => "t=1", r => _answer); }
         }
 
+        [TearDown]
+        public void TearDown() => _answer = null;   // the checker stays registered for the whole run: it must agree again for the tests that come after
+
         [Test]
         public void ADifferenceIsNotCountedAtFirst_AndOnlyIfItIsStillThereHalfASecondLater()
         {

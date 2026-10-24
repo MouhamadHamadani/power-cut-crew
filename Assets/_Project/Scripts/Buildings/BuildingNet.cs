@@ -8,10 +8,10 @@ using UnityEngine;
 namespace PowerCutCrew.Buildings
 {
     /// <summary>What a neighbor shouts about.</summary>
-    public enum BubbleTrigger : byte { Request = 0, Unpowered = 1, Spike = 2, Angry = 3 }
+    public enum BubbleTrigger : byte { Request = 0, Unpowered = 1, Spike = 2, Angry = 3, Sputter = 4, Belt = 5, Breaker = 6 }
 
-    /// <summary>How the marker above a building looks.</summary>
-    public enum MarkerState : byte { Quiet = 0, Powered = 1, Unpowered = 2, Angry = 3 }
+    /// <summary>How a marker looks: a building's four moods, or a generator breakdown (the shift puts these on the generator).</summary>
+    public enum MarkerState : byte { Quiet = 0, Powered = 1, Unpowered = 2, Angry = 3, Breakdown = 4 }
 
     /// <summary>
     /// A building: the host runs its <see cref="BuildingModel"/> (the <see cref="BuildingDirector"/> ticks it), the state goes out as NetworkVariables
@@ -104,9 +104,15 @@ namespace PowerCutCrew.Buildings
                 case BubbleTrigger.Request: return "request";
                 case BubbleTrigger.Unpowered: return "unpowered";
                 case BubbleTrigger.Spike: return "spike";
+                case BubbleTrigger.Sputter: return "sputter";
+                case BubbleTrigger.Belt: return "belt";
+                case BubbleTrigger.Breaker: return "breaker";
                 default: return "angry";
             }
         }
+
+        /// <summary>How many lines a trigger has: four for the street's own moods, two for each breakdown.</summary>
+        public static int LinesFor(BubbleTrigger t) => t >= BubbleTrigger.Sputter ? 2 : LinesPerTrigger;
 
         public override void OnNetworkSpawn()
         {
@@ -185,7 +191,7 @@ namespace PowerCutCrew.Buildings
         public void HostShowBubble(BubbleTrigger trigger, System.Random rng)
         {
             _bubbleTrigger.Value = (byte)trigger;
-            _bubbleLine.Value = (byte)rng.Next(LinesPerTrigger);
+            _bubbleLine.Value = (byte)rng.Next(LinesFor(trigger));
             _bubbleStart.Value = (float)NetworkManager.ServerTime.Time;
             _bubbleId.Value++;
             NetMetrics.Count("bubbles");

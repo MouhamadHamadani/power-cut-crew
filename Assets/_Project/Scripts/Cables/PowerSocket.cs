@@ -92,7 +92,7 @@ namespace PowerCutCrew.Cables
         {
             if (!IsSpawned || !IsServer) { return; }
             GeneratorNet gen = GeneratorNet.Instance;
-            bool powered = gen != null && gen.Grid.IsPowered(Id, gen.IsRunning);
+            bool powered = gen != null && gen.Feeds(Id);
             if (powered != _powered.Value)
             {
                 _powered.Value = powered;

@@ -99,12 +99,12 @@ namespace PowerCutCrew.Buildings
                 BuildingMarker m = _markers[i];
                 BuildingMarkerUI ui = m != null ? m.Ui : null;
                 if (ui == null) { continue; }
-                if (cam == null) { ui.gameObject.SetActive(false); continue; }
+                if (cam == null || m.Hidden) { ui.gameObject.SetActive(false); continue; }
                 Vector3 world = m.AnchorPosition;
                 Vector3 sp = cam.WorldToScreenPoint(world);
                 bool behind = sp.z < 0f;
                 MarkerPlacement spot = MarkerLayout.Place(new Vector2(sp.x, sp.y), behind, screen, side, top, bottom);
-                bool urgent = m.State == MarkerState.Unpowered || m.State == MarkerState.Angry;
+                bool urgent = m.State == MarkerState.Unpowered || m.State == MarkerState.Angry || m.State == MarkerState.Breakdown;
                 float distance = Vector3.Distance(cam.transform.position, world);
                 if (spot.OnScreen)
                 {

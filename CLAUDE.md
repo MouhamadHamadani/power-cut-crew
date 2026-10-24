@@ -44,7 +44,7 @@ assembly name. Every system references `PowerCutCrew.Core`; nothing references `
 | Cables | PowerCutCrew.Cables | host-only physics rope generator→socket, `CableModel` (grab / plug / snap / pop-out / respawn timers), `PlugRules`, sockets, reels, core-loop world + bots + verify hooks |
 | Buildings | PowerCutCrew.Buildings | `BuildingModel` / `BuildingDirector` (plain C#: demand windows, subscription amps, spikes, happiness, Angry, payment), `BuildingNet` (NetworkVariables, marker, bubble; building i owns socket i) |
 | Fuel | PowerCutCrew.Fuel | `FuelContainer` (plain C#), jerrycans, fuel drum; spills and fire later |
-| Breakdowns | PowerCutCrew.Breakdowns | typed failures with physical fixes |
+| Breakdowns | PowerCutCrew.Breakdowns | `BreakdownModel` / `BreakdownDirector` (plain C#): sputtering engine (wrench on the sweet spot), broken fan belt (spare belt from the crate), tripped breaker (hold the lever); `BreakdownNet`, wrench, crate, slot, lever, bot, verify. Only Shift, Editor and tests reference it |
 | Shift | PowerCutCrew.Shift | `ShiftModel` (Lobby, Countdown, Running, Summary; plain C#), `ShiftNet` (host-owned money, HUD, summary, "Another shift" resets the street), clipboard, bots, `ShiftVerify`, `ShiftShots` |
 | Economy | PowerCutCrew.Economy | upgrades between shifts |
 | Net | PowerCutCrew.Net | sessions, Steam lobbies, players, grabbable items, `SnapshotStream`, bots, metrics |
@@ -52,7 +52,7 @@ assembly name. Every system references `PowerCutCrew.Core`; nothing references `
 | Localization | PowerCutCrew.Localization | language switching, RTL helpers (`LocalizedRtlText`) |
 | Editor | PowerCutCrew.Editor | editor-only: `ProjectSetup`, `ContentSetup`, `NetFoundationSetup`, `CoreLoopSetup`, `BuildTools` |
 
-Other folders: `Config/` (tuning assets; `Config/Resources/` holds `NetTuning`, `PlayerTuning`, `GeneratorTuning`, `FuelTuning`, `CableTuning`, `CoreLoopCatalog`), `Scenes/` (Bootstrap →
+Other folders: `Config/` (tuning assets; `Config/Resources/` holds `NetTuning`, `PlayerTuning`, `GeneratorTuning`, `FuelTuning`, `CableTuning`, `BreakdownTuning`, `CoreLoopCatalog`, `BreakdownCatalog`), `Scenes/` (Bootstrap →
 MainMenu → Street_Greybox), `Prefabs/Net/`, `Prefabs/CoreLoop/`, `Art/`, `Audio/`, `Settings/{Rendering,Input,Localization}`, `Tests/{EditMode,PlayMode}`.
 
 **Rules:** game rules live in plain C# classes; MonoBehaviours and network behaviours stay thin; every tunable number
@@ -80,8 +80,8 @@ transport (`Steam`), Steamworks.NET. Host-authoritative P2P over Steam lobbies. 
 - **Many-body physics** (cable, chains) syncs through `SnapshotStream`, **not** per-object NetworkTransforms.
 - Connection approval is `ConnectionRules` (full, version mismatch). Steam is only initialised when Steam mode is used.
 - Launch args: `-host`, `-client <ip>`, `-steamhost`, `-steamclient <lobbyId>`, `-bot`, `-duration <s>`, `-netsim none|bad|awful`,
-  `-seed <n>`, `-role <name>`, `-verify` (late-join assertion: core loop, shift state / time / money, every building's window, powered, happiness, Angry, bubble), `-autostart` (a bot starts the shift at the clipboard), `-yank` (the host bot fakes a pull on a plugged cable), `-cabletrace` (stretch after each plug-in), `-shifts <n>`, `-shiftseconds <s>`, `-holdforever`, `-holdplug`, `-snapbias`, `-botlog`,
-  `-shotdir <dir> -shot playpanel|prompt|coreloop|shift` (doc screenshots). F1 = debug overlay (dev builds).
+  `-seed <n>`, `-role <name>`, `-verify` (late-join assertion: core loop, shift state / time / money, every building's window, powered, happiness, Angry, bubble), `-autostart` (a bot starts the shift at the clipboard), `-yank` (the host bot fakes a pull on a plugged cable), `-cabletrace` (stretch after each plug-in), `-shifts <n>`, `-shiftseconds <s>`, `-breakdowns off` (no breakdowns), `-breakdown sputter|belt|breaker -breakdownat <s>` (force one, again `s` s after each fix; the dice are off), `-holdforever`, `-holdplug`, `-snapbias`, `-botlog`,
+  `-shotdir <dir> -shot playpanel|prompt|coreloop|shift|breakdowns` (doc screenshots). F1 = debug overlay (dev builds).
 - `steam_appid.txt` (480) is copied for development builds only; release builds must not ship it.
 
 ## Arabic / localization

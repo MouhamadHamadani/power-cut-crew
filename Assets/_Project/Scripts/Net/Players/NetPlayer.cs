@@ -32,6 +32,7 @@ namespace PowerCutCrew.Net
         private PlayerController _controller;
         private HumanInput _human;
         private LocalizedString _fallbackName;
+        private Vector3 _labelBaseScale;
 
         public int Slot => _slot.Value;
         public int PlayerId => (int)OwnerClientId;
@@ -44,6 +45,7 @@ namespace PowerCutCrew.Net
         private void Awake()
         {
             _controller = GetComponent<PlayerController>();
+            _labelBaseScale = _label.transform.localScale;
             _fallbackName = new LocalizedString("UI", "net.player_name");
             _fallbackName.StringChanged += s => { if (_name.Value.Length == 0) { _label.text = s; } };
         }
@@ -138,7 +140,11 @@ namespace PowerCutCrew.Net
             Camera cam = Camera.main;
             if (cam != null)
             {
-                _label.transform.rotation = Quaternion.LookRotation(_label.transform.position - cam.transform.position);
+                Vector3 toLabel = _label.transform.position - cam.transform.position;
+                _label.transform.rotation = Quaternion.LookRotation(toLabel);
+                PlayerTuning t = PlayerTuning.Instance;
+                // the tag keeps a readable size on screen: not huge next to the camera, not tiny far away (the parent's scale is 1)
+                _label.transform.localScale = _labelBaseScale * NameTagScale.For(toLabel.magnitude, t.NameTagReferenceDistance, t.NameTagMinScreenFactor, t.NameTagMaxScreenFactor);
             }
         }
 
@@ -184,9 +190,37 @@ namespace PowerCutCrew.Net
             else { HoldRpc(new NetworkObjectReference(no), index, phase, hand.position, hand.rotation); }
         }
 
+        /// <summary>Use the held item (the wrench swing): the request names the item, what was hit and where; the host checks who holds what.</summary>
+        public void RequestUse(NetworkPhysicsItem item, Component target, Vector3 point)
+        {
+            NetworkObject targetObject = target != null ? target.GetComponentInParent<NetworkObject>() : null;
+            if (IsServer) { HostUse(item.NetworkObject, targetObject, target, point); return; }
+            UseRpc(new NetworkObjectReference(item.NetworkObject), targetObject != null ? new NetworkObjectReference(targetObject) : default, point);
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+        private void UseRpc(NetworkObjectReference item, NetworkObjectReference target, Vector3 point)
+        {
+            if (!item.TryGet(out NetworkObject itemObject, NetworkManager)) { return; }
+            NetworkObject targetObject = null;
+            target.TryGet(out targetObject, NetworkManager);
+            HostUse(itemObject, targetObject, targetObject != null ? targetObject.transform : null, point);
+        }
+
+        private void HostUse(NetworkObject itemObject, NetworkObject targetObject, Component target, Vector3 point)
+        {
+            var item = itemObject.GetComponent<NetworkPhysicsItem>();
+            var usable = itemObject.GetComponent<IUsableItem>();
+            // only the holder can use it
+            if (item == null || usable == null || !item.IsHeld || item.HolderClientId != OwnerClientId) { NetMetrics.Count("useRejected"); return; }
+            usable.HostUse(PlayerId, target, point);
+        }
+
         public void RequestDrop()
         {
-            Vector3 velocity = transform.forward * PlayerTuning.Instance.DropForwardSpeed;
+            NetworkPhysicsItem held = NetworkPhysicsItem.HeldByLocal();
+            IUsableItem usable = held != null ? held.GetComponent<IUsableItem>() : null;
+            Vector3 velocity = transform.forward * (usable != null ? usable.DropSpeed : PlayerTuning.Instance.DropForwardSpeed);
             SendRelease(velocity, false);
         }
 

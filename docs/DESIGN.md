@@ -94,7 +94,7 @@ Systems:
 | Fuel | Jerrycans, fuel drum; spills and fire later | Jerrycans + drum built; spills/fire not yet |
 | Shift timer + score | Lobby → Countdown → Running → Summary, uptime, money, Angry count | Built (Prompt 05) |
 | Readability | Screen-space building markers, status icons, legend, controls card, first-shift tips | Built (Prompt 06) |
-| Breakdowns | Typed failures with a physical fix (3 types) | Prompt 07 |
+| Breakdowns | Typed failures with a physical fix (3 types) | Built (Prompt 07): sputtering engine, broken fan belt, tripped breaker |
 | Economy / upgrades | Host buys upgrades between shifts; per-cable ratings | Prompt 08 |
 | Events | Football final, wedding, heatwave, hospital, rival crew sabotage | Later |
 | Voice | Proximity voice chat | Later, optional |
@@ -108,20 +108,26 @@ Systems:
 - **Far away:** beyond 40 m a marker is compact (icon and amps, half the width) and a Quiet building is only a small dot. Overlapping markers are pushed up (never below their building) and a marker that was nudged far gets a thin leader line to its building.
 - **Icons instead of glyphs:** a moon (Quiet, grey), a lit bulb (Powered, lamp yellow), a flashing lightning bolt (Unpowered, spark red), an angry face (Angry, purple). Drawn by an editor script, no external assets.
 - **Help:** a legend of the four icons in the lobby and countdown; a controls card on `H` (gamepad Select) that lists the actions with their current bindings (read from the Input System) and the legend, with a button to hide the corner hint "H: controls";
-  first-shift tips, local to each player and each shown once per session: grab a free plug, a building in the dark, low fuel, a hot generator.
+  first-shift tips, local to each player and each shown once per session: grab a free plug, a building in the dark, low fuel, a hot generator, and one per kind of breakdown. The legend and the card list seven icons: the four moods and the three breakdowns.
 - **Arabic:** the UI is MSA (neighbor lines and building names stay in dialect). Numbers use Arabic-Indic digits everywhere. `RtlBinding.Compose` puts a key name next to a text so the Arabic text comes first (the key ends up on the left end of the line); the card, the legend and the corner hint mirror (rows and icons on the right, hint in the bottom right). Key names (E, Space, LMB) come from Unity's Input System and are not translated. RTLTMPro only shapes a string whose first letter is Arabic, so Arabic strings that carry a key name start with the Arabic words.
 
 ### Breakdowns (Prompt 07, MVP: 3 types)
 
-Typed failures that hit the generator during a shift. Each has a visible, funny symptom and a physical fix someone has to walk over and do:
+Typed failures that hit the generator during a shift. Each has a visible, funny symptom and a physical fix someone has to walk over and do. Nothing here ever ends the shift on its own, and nothing gets worse in a way that cannot be recovered (an unfixed belt overheats the generator, which is a lockout the crew already knows, not a new one).
 
-| Breakdown | Symptom | Fix |
-|---|---|---|
-| Stuck / sputtering engine | Generator coughs, power flickers on every building | Smack the right spot on the housing with Use/Hit |
-| Broken part (e.g. fan belt or spark plug) | Smoke, heat rises fast | Fetch the spare part from the crate and swap it in |
-| Tripped breaker | One outlet goes dead (its building drops) | Reset the breaker on the panel (hold interaction) |
+| Breakdown | What everybody sees | Effect on the game | Fix |
+|---|---|---|---|
+| **Sputtering engine** (`sputter`) | the generator coughs black smoke and shakes in puffs; every building's lights flicker; a glowing spot on the housing | output is dead for 0.6 s every 2.5 s (the first cough 1.9 s after it starts); every building counts as unpowered during a dip | hit the glowing **sweet spot** with the **wrench** 3 times. The spot is 1 of 4 points on the housing, picked at random per breakdown. A hit elsewhere: loud clang, the wrench bounces in the hand, no progress |
+| **Broken fan belt** (`belt`) | squeal, grey smoke from the side, the heat bar pulses red; the belt slot pulses | no cooling while running, and +3 heat per second on top (an idle generator is overheated in about 33 s) | take a **spare belt** from the spare-parts crate (Interact, hands must be empty), carry it to the belt slot and hold Interact for 2 s. The old belt flies out of the slot and is gone after 20 s |
+| **Tripped breaker** (`breaker`) | spark and a bang, the lever flops over, one outlet's lamp goes red; the lever pulses | one outlet (one with a cable plugged in, if any) delivers no power, so its building drops | hold Interact on the **lever** for 1.5 s. If the load that would come back is above the rated amps the lever stays up for 1 s and falls back (funny, and it teaches overload): unplug something first |
 
-Exact list and tuning to be decided when Prompt 07 is drafted.
+**When.** `BreakdownDirector` (host only, deterministic with `-seed`): only while the shift runs and the generator runs; none in the first 60 s; at least 40 s between two new ones; at most 2 active, never two of a kind. Every second each type rolls: sputter 0.004 (x3 below 25 % fuel), belt 0.003 (x3 above heat 70), breaker 0.002 (x6 while the load is above the rated amps). With average play a 10-minute shift sees about 3 to 5 (the unit test simulates 300 shifts with a low tank, a hot generator and an overload now and then, every breakdown fixed within 20 to 30 s: 4.9 per shift, 2.0 sputter, 1.4 belt, 1.5 breaker).
+
+**Items.** The **wrench** hangs on a shelf by the generator (it goes back after 30 s when it is lost: below the floor or 20 m from its hook). It is a grabbable item that is *used* instead of thrown: RMB / LT (the use button) swings it; Q (drop) *tosses* it forward at 5 m/s instead of letting it fall, so throwing it is still possible (decision: Q with velocity, not a long press, because the throw button is the swing). The **spare belt** comes out of the crate into your hands (at most 2 belts lie around; the crate is empty-handed only). The **belt slot** and the **breaker lever** are hold interactions with one player at a time (`InteractionArbiter`).
+
+**Readability.** The generator gets a flashing screen-space marker per active breakdown (wrench, snapped belt, breaker; off-screen arrow included), the same overlay as the buildings. The sweet spot glows lamp yellow; the belt slot and the lever pulse while they are what needs doing; a thin bar fills while somebody holds a fix. Legend, controls card, one first-shift tip per kind and two neighbour lines per kind (dialect in Arabic). Sounds are not in the project yet: `BreakdownNet.Sound` is the hook.
+
+**Summary.** `Breakdowns fixed` and `Average fix time` are on the summary screen and in `-verify`.
 
 ### Upgrades and cable ratings (Prompt 08)
 

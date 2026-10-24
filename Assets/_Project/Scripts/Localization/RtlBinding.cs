@@ -43,6 +43,64 @@ namespace PowerCutCrew.Localization
     }
 
     /// <summary>
+    /// Numbers inside an Arabic sentence. RTLTMPro keeps a run of digits in reading order but treats every punctuation mark between two Arabic-range digits as a break
+    /// of the right-to-left flow, so "19.8%" came out as "8%.19". <see cref="ForRtl"/> rewrites each number of a string that will go through RTLTMPro so that it is drawn
+    /// as the Arabic reader expects: "١٩٫٨٪" (Arabic decimal separator, the percent sign after the number, the digits in order). The rewritten text is the logical string
+    /// RTLTMPro is given (the digit groups of a decimal or a clock time and the percent sign come in the order its fixer reverses), so this only fits text that goes through it.
+    /// </summary>
+    public static class ArabicNumbers
+    {
+        public const char DecimalSeparator = '٫';
+        public const char PercentSign = '٪';
+
+        /// <summary>True when the text has an Arabic letter (so RTLTMPro will lay it out right to left).</summary>
+        public static bool HasArabicLetter(string text)
+        {
+            if (string.IsNullOrEmpty(text)) { return false; }
+            foreach (char c in text)
+            {
+                if (c >= 'ء' && c <= 'ي') { return true; }
+            }
+            return false;
+        }
+
+        public static string ForRtl(string text)
+        {
+            if (!HasArabicLetter(text)) { return text; }
+            var sb = new System.Text.StringBuilder(text.Length + 4);
+            var groups = new System.Collections.Generic.List<string>();
+            var separators = new System.Collections.Generic.List<char>();
+            int i = 0;
+            while (i < text.Length)
+            {
+                if (!IsAsciiDigit(text[i])) { sb.Append(text[i]); i++; continue; }
+                groups.Clear();
+                separators.Clear();
+                while (true)
+                {
+                    int start = i;
+                    while (i < text.Length && IsAsciiDigit(text[i])) { i++; }
+                    groups.Add(text.Substring(start, i - start));
+                    bool more = i + 1 < text.Length && (text[i] == '.' || text[i] == ':') && IsAsciiDigit(text[i + 1]);
+                    if (!more) { break; }
+                    separators.Add(text[i] == '.' ? DecimalSeparator : ':');
+                    i++;
+                }
+                if (i < text.Length && text[i] == '%') { sb.Append(PercentSign); i++; }
+                // the groups come last-first, so the number is read first-to-last
+                for (int g = groups.Count - 1; g >= 0; g--)
+                {
+                    sb.Append(groups[g]);
+                    if (g > 0) { sb.Append(separators[g - 1]); }
+                }
+            }
+            return sb.ToString();
+        }
+
+        private static bool IsAsciiDigit(char c) => c >= '0' && c <= '9';
+    }
+
+    /// <summary>
     /// The digits of the shown language: Arabic-Indic in Arabic, so the time, the money, the load and the summary agree with the amps. A string with Arabic letters is left
     /// alone: RTLTMPro turns its digits into Arabic-Indic ones itself and keeps each number in reading order (pre-converted digits would be reversed like letters).
     /// </summary>
@@ -62,6 +120,13 @@ namespace PowerCutCrew.Localization
             for (int i = 0; i < chars.Length; i++)
             {
                 if (chars[i] >= '0' && chars[i] <= '9') { chars[i] = (char)('٠' + (chars[i] - '0')); }
+            }
+            // the Arabic decimal separator between digits and the Arabic percent sign after one
+            for (int i = 1; i < chars.Length; i++)
+            {
+                bool afterDigit = chars[i - 1] >= '٠' && chars[i - 1] <= '٩';
+                if (chars[i] == '.' && afterDigit && i + 1 < chars.Length && chars[i + 1] >= '٠' && chars[i + 1] <= '٩') { chars[i] = ArabicNumbers.DecimalSeparator; }
+                else if (chars[i] == '%' && afterDigit) { chars[i] = ArabicNumbers.PercentSign; }
             }
             return new string(chars);
         }

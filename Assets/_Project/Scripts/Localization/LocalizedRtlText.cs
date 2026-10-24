@@ -68,11 +68,11 @@ namespace PowerCutCrew.Localization
             _label.text = Shown(value);
         }
 
-        /// <summary>The formatted text, with Arabic-Indic digits in Arabic (one rule for every number on screen).</summary>
+        /// <summary>The formatted text, with Arabic-Indic digits in Arabic and every number in the order RTLTMPro draws it right (one rule for every number on screen).</summary>
         private string Shown(string value)
         {
             string shown = Format != null ? Format(value) : value;
-            return RtlBinding.IsArabic ? ArabicDigits.Convert(shown) : shown;
+            return RtlBinding.IsArabic ? ArabicDigits.Convert(ArabicNumbers.ForRtl(shown)) : shown;
         }
 
         private static TextAlignmentOptions Mirror(TextAlignmentOptions a)

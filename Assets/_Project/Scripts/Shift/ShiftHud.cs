@@ -32,6 +32,8 @@ namespace PowerCutCrew.Shift
         [SerializeField] private LocalizedRtlText _sumOverheats;
         [SerializeField] private LocalizedRtlText _sumSnaps;
         [SerializeField] private LocalizedRtlText _sumPulls;
+        [SerializeField] private LocalizedRtlText _sumFixed;
+        [SerializeField] private LocalizedRtlText _sumFixTime;
         [SerializeField] private LocalizedRtlText _sumVerdict;
         [SerializeField] private GameObject _hostButtons;
         [SerializeField] private GameObject _waiting;
@@ -90,7 +92,7 @@ namespace PowerCutCrew.Shift
             label.Refresh();
         }
 
-        private string _sumUptimeShown, _sumMoneyShown, _sumAngryShown, _sumOverheatsShown, _sumSnapsShown, _sumPullsShown, _verdictShown;
+        private string _sumUptimeShown, _sumMoneyShown, _sumAngryShown, _sumOverheatsShown, _sumSnapsShown, _sumPullsShown, _sumFixedShown, _sumFixTimeShown, _verdictShown;
 
         private void Update()
         {
@@ -159,6 +161,9 @@ namespace PowerCutCrew.Shift
             SetValues(_sumOverheats, ref _sumOverheatsShown, s.Overheats.ToString(CultureInfo.InvariantCulture), s.Overheats);
             SetValues(_sumSnaps, ref _sumSnapsShown, s.Snaps.ToString(CultureInfo.InvariantCulture), s.Snaps);
             SetValues(_sumPulls, ref _sumPullsShown, s.FailedPulls.ToString(CultureInfo.InvariantCulture), s.FailedPulls);
+            SetValues(_sumFixed, ref _sumFixedShown, s.BreakdownsFixed.ToString(CultureInfo.InvariantCulture), s.BreakdownsFixed);
+            string fixTime = s.AvgFixSeconds.ToString("0.#", CultureInfo.InvariantCulture);
+            SetValues(_sumFixTime, ref _sumFixTimeShown, fixTime, fixTime);
             string verdictKey = VerdictKey((ShiftVerdict)s.Verdict);
             if (verdictKey != _verdictShown)
             {

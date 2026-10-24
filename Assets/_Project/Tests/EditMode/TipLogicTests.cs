@@ -96,5 +96,25 @@ namespace PowerCutCrew.Tests.EditMode
             Assert.IsFalse(fresh.HasShown(Tip.Fuel));
             Assert.AreEqual(Tip.Fuel, Run(fresh, 0.2f, fuel));
         }
+    
+        [Test]
+        public void EachBreakdownHasItsOwnTip_ShownTheFirstTimeItHappensInTheSession()
+        {
+            TipInputs Broken(bool sputter, bool belt, bool breaker) => new TipInputs { Active = true, FuelFraction = 1f, SputterActive = sputter, BeltActive = belt, BreakerActive = breaker };
+            Assert.AreEqual(Tip.Sputter, Run(new TipLogic(Quick()), 0.2f, Broken(true, false, false)));
+            Assert.AreEqual(Tip.Belt, Run(new TipLogic(Quick()), 0.2f, Broken(false, true, false)));
+            Assert.AreEqual(Tip.Breaker, Run(new TipLogic(Quick()), 0.2f, Broken(false, false, true)));
+            Assert.AreEqual("tip.sputter", TipLogic.Key(Tip.Sputter));
+            Assert.AreEqual("tip.belt", TipLogic.Key(Tip.Belt));
+            Assert.AreEqual("tip.breaker", TipLogic.Key(Tip.Breaker));
+
+            var t = new TipLogic(Quick());
+            Assert.AreEqual(Tip.Belt, Run(t, 0.2f, Broken(false, true, false)));
+            Run(t, 5f, Broken(false, false, false));
+            Assert.IsNull(Run(t, 5f, Broken(false, true, false)), "the second belt breakdown of the session gets no tip");
+            Assert.AreEqual(Tip.Breaker, Run(t, 1f, Broken(false, true, true)), "but a kind that has not happened yet does");
+            Assert.IsTrue(t.HasShown(Tip.Belt));
+            Assert.IsFalse(t.HasShown(Tip.Sputter));
+        }
     }
 }

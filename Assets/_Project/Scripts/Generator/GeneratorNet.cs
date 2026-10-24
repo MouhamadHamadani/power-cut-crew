@@ -40,6 +40,18 @@ namespace PowerCutCrew.Generator
         public float Capacity => GeneratorTuning.Instance.Capacity;
         public float RatedAmps => GeneratorTuning.Instance.RatedAmps;
         public bool IsRunning => State == GeneratorState.Running;
+
+        /// <summary>Every machine: the heat bar pulses red (the breakdowns set it while the fan belt is gone).</summary>
+        public bool HeatAlarm { get; set; }
+
+        /// <summary>Host: running and not coughing (a sputtering engine delivers nothing for a moment).</summary>
+        public bool OutputLive => _model != null && _model.OutputLive;
+
+        /// <summary>Host: the engine is running but coughing right now.</summary>
+        public bool InDip => _model != null && _model.State == GeneratorState.Running && _model.OutputDip;
+
+        /// <summary>Host: does this socket have power right now (a cable from a live outlet, the output alive).</summary>
+        public bool Feeds(int socketId) => Grid.IsPowered(socketId, OutputLive);
         public GeneratorModel Model => _model;
 
         private void Awake()
@@ -70,6 +82,7 @@ namespace PowerCutCrew.Generator
             GeneratorTuning t = GeneratorTuning.Instance;
             _model = new GeneratorModel(t.ToSettings(), t.StartFuel);
             Grid.DisconnectAll();
+            Grid.ResetTrips();
             Publish(true);
         }
 

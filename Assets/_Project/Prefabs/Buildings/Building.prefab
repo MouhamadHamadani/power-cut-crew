@@ -856,6 +856,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PowerCutCrew.Buildings::PowerCutCrew.Buildings.BuildingMarker
   _uiPrefab: {fileID: 2582925683310529842, guid: 6d90cafb6487fd4438dee988512bc166, type: 3}
+  _startHidden: 0
 --- !u!114 &726639117909806228
 MonoBehaviour:
   m_ObjectHideFlags: 0

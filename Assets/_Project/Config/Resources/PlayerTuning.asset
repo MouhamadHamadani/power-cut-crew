@@ -28,3 +28,6 @@ MonoBehaviour:
   HoldBelowEyes: 0.3
   ThrowSpeed: 9
   DropForwardSpeed: 0.5
+  NameTagReferenceDistance: 6
+  NameTagMinScreenFactor: 0.6
+  NameTagMaxScreenFactor: 1.4

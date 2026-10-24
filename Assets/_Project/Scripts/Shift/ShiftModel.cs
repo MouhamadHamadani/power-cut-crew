@@ -25,6 +25,8 @@ namespace PowerCutCrew.Shift
         public int Overheats;
         public int Snaps;
         public int FailedPulls;
+        public int BreakdownsFixed;
+        public float AvgFixSeconds;
     }
 
     /// <summary>
